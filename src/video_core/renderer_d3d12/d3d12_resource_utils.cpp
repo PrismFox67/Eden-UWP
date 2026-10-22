@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright 2026 Jadyx Project
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <atomic>
 #include <stdexcept>
 #include <string>
 
@@ -11,12 +12,25 @@
 
 namespace D3D12 {
 
+namespace {
+std::atomic_bool uncached_readback{false};
+} // Anonymous namespace
+
+void SetUncachedReadback(bool enabled) {
+    uncached_readback.store(enabled, std::memory_order_relaxed);
+}
+
 ComPtr<ID3D12Resource> CreateCommittedBuffer(ID3D12Device* device, u64 size,
                                              D3D12_HEAP_TYPE heap_type,
                                              D3D12_RESOURCE_STATES initial_state,
                                              D3D12_RESOURCE_FLAGS flags, const char* what,
                                              HRESULT* hr) {
-    const D3D12_HEAP_PROPERTIES heap{.Type = heap_type};
+    D3D12_HEAP_PROPERTIES heap{.Type = heap_type};
+    if (heap_type == D3D12_HEAP_TYPE_READBACK && uncached_readback.load(std::memory_order_relaxed)) {
+        heap = {.Type = D3D12_HEAP_TYPE_CUSTOM,
+                .CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_WRITE_COMBINE,
+                .MemoryPoolPreference = D3D12_MEMORY_POOL_L0};
+    }
     const D3D12_RESOURCE_DESC desc = BufferDesc(size, flags);
     ComPtr<ID3D12Resource> buffer;
     VideoCore::Perf::ScopedTimer timer{VideoCore::Perf::Counter::ResourceCreateUs,

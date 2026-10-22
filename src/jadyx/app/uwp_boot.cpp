@@ -137,6 +137,7 @@ std::string DescribePsoCost();            // likewise
 void ShowLoadProgress(VideoCore::RendererBase& renderer, size_t done, size_t total);
 void ShowCpuLoadProgress(VideoCore::RendererBase& renderer, size_t done, size_t total);
 void RemoveDeviceForProbe(VideoCore::RendererBase& renderer);
+void SetUncachedReadback(bool enabled); // d3d12_resource_utils.h
 void SetBcArrayDecode(bool enabled); // d3d12_texture_cache.h
 void SetAstcGpuDecode(bool enabled); // d3d12_texture_cache.h
 void SetAstcGpuVerify(bool enabled); // d3d12_texture_cache.h
@@ -256,6 +257,9 @@ struct BootConfig {
     /// metadata, so it bounds the JIT's memory: a large game compiled 400+ MiB in two minutes on
     /// the default 512 MiB per core, and 1 GiB with the metadata, without ever releasing any.
     u32 jit_cache_mib{128};
+    /// Read/write/execute JIT code memory instead of W^X page flips ("jit_rwx=1"); falls back to
+    /// W^X when the system refuses it.
+    bool jit_rwx{};
     /// D3D12 debug layer (renderer_debug); PC only, the console has no SDK layers.
     bool debug_layer{};
     /// With the debug layer, GPU-based validation too ("debug_layer=gbv").
@@ -349,6 +353,8 @@ struct BootConfig {
     std::array<u32, 2> material_snapshot_vertices{};
     /// Keep D3D12 block-compressed 2D arrays compressed instead of decoding them on the CPU.
     bool bc_arrays_native{};
+    /// Readback buffers in uncached CPU memory ("readback_uncached=1"), see SetUncachedReadback.
+    bool readback_uncached{};
     /// How ASTC reaches D3D12 ("astc="): BC3 for single textures and RGBA8 for arrays. "gpu" (the
     /// default since 0.2.59) performs both decode and BC3 encode on the GPU; "bc3" keeps the CPU
     /// reference path and "cpu" expands every image to RGBA8.
@@ -465,7 +471,8 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
                                                                : "hybrid diagnostic") +
               (fastmem_enabled ? " (hot " + std::to_string(config.fastmem_hot_mib) + " MiB)" : "") +
               ", D3D12 pipeline workers on, dependent draws preserved" +
-              ", JIT cache " + std::to_string(config.jit_cache_mib) + " MiB per core");
+              ", JIT cache " + std::to_string(config.jit_cache_mib) + " MiB per core" +
+              (config.jit_rwx ? ", JIT RWX requested" : ""));
     D3D12::SetTracedFrame(config.traced_frame, config.traced_frames);
     D3D12::SetMaterialProbe(config.material_probe_x, config.material_probe_y);
     D3D12::SetMaterialCaptureFrame(config.material_capture_frame);
@@ -477,8 +484,13 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
     // caches evict against what the whole app has left, not DXGI's budget.
     g_test_memory_limit = u64{config.memory_limit_mib} << 20;
     Core::SetJitCodeCacheSize(config.jit_cache_mib << 20);
+    Dynarmic::SetPreferRwxCodeMemory(config.jit_rwx);
     D3D12::SetAppMemoryQuery(QueryAppMemory);
     D3D12::SetBcArrayDecode(!config.bc_arrays_native);
+    D3D12::SetUncachedReadback(config.readback_uncached);
+    if (config.readback_uncached) {
+        WriteDiag("step: readback buffers uncached (readback_uncached=1)");
+    }
     // RGBA8 ASTC made loading frames upload 150-260 MiB at once and the console run out of memory
     // (0.2.50): textures become BC3 (a quarter of the memory), 2D arrays too unless
     // astc_arrays=rgba (BootConfig::astc_arrays_rgba), all decoded and encoded on the GPU.
@@ -2615,6 +2627,10 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
                             } else {
                                 WriteDiag("boot.cfg: invalid jit_cache_mib (32-512), ignored");
                             }
+                        } else if (line == "readback_uncached=1" || line == "readback_uncached=0") {
+                            config.readback_uncached = line.back() == '1';
+                        } else if (line == "jit_rwx=1" || line == "jit_rwx=0") {
+                            config.jit_rwx = line.back() == '1';
                         } else if (line == "jit_prewarm=record") {
                             config.jit_prewarm = Jadyx::BootConfig::JitPrewarm::Record;
                         } else if (line == "jit_prewarm=1") {

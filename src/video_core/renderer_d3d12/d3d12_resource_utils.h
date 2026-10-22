@@ -46,6 +46,11 @@ void TransitionResource(Commands* commands, ID3D12Resource* resource,
     D3D12_RESOURCE_STATES initial_state, D3D12_RESOURCE_FLAGS flags, const char* what,
     HRESULT* hr = nullptr);
 
+/// Readback buffers in an uncached (write-combined) CPU heap instead of the cached READBACK heap, so
+/// CPU reads can't see stale cache lines where the GPU's writes aren't snooped. Diagnostic for
+/// Series-only readback bugs (Magnesis); reads get slower.
+void SetUncachedReadback(bool enabled);
+
 /// Serializes desc (root signature 1.0) and creates it; throws with the serializer's message.
 [[nodiscard]] ComPtr<ID3D12RootSignature> CreateRootSignature(
     ID3D12Device* device, const D3D12_ROOT_SIGNATURE_DESC& desc, const char* what);
