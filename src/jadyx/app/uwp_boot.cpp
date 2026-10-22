@@ -62,6 +62,7 @@
 #include "core/cpu_manager.h"
 #include "core/device_memory.h"
 #include "video_core/host1x/host1x.h"
+#include "video_core/renderer_d3d12/d3d12_pipeline_quarantine.h"
 #include "video_core/host1x/syncpoint_manager.h"
 #include "core/file_sys/control_metadata.h"
 #include "core/file_sys/registered_cache.h"
@@ -1897,6 +1898,7 @@ std::string FormatFaultStack(const CONTEXT& fault, const char* prefix);
 // thread. /EHsc catch(...) does not see these, which is why the boot worker's handlers stay silent.
 // Reports the faulting address as an RVA into jadyx.exe so it can be resolved with the build's PDB.
 LONG WINAPI OnUnhandledException(EXCEPTION_POINTERS* info) {
+    D3D12::PipelineQuarantine::OnCrash(); // first: the rest may fault again on a broken stack
     const EXCEPTION_RECORD* rec = info->ExceptionRecord;
     const auto base = reinterpret_cast<uintptr_t>(&__ImageBase);
     const auto* nt = reinterpret_cast<const IMAGE_NT_HEADERS*>(base + __ImageBase.e_lfanew);

@@ -550,6 +550,8 @@ if (ENABLE_D3D12)
         renderer_d3d12/d3d12_device.h
         renderer_d3d12/d3d12_driver_guard.cpp
         renderer_d3d12/d3d12_driver_guard.h
+        renderer_d3d12/d3d12_pipeline_quarantine.cpp
+        renderer_d3d12/d3d12_pipeline_quarantine.h
         renderer_d3d12/d3d12_scheduler.cpp
         renderer_d3d12/d3d12_scheduler.h
         renderer_d3d12/d3d12_query_cache.cpp

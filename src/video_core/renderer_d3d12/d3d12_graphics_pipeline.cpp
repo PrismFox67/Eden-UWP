@@ -29,6 +29,7 @@
 #include "video_core/renderer_d3d12/d3d12_barrier_batch.h"
 #include "video_core/renderer_d3d12/d3d12_descriptor_heap.h"
 #include "video_core/renderer_d3d12/d3d12_draw_targets.h"
+#include "video_core/renderer_d3d12/d3d12_pipeline_quarantine.h"
 #include "video_core/renderer_d3d12/d3d12_draw_metrics.h"
 #include "video_core/renderer_d3d12/d3d12_driver_guard.h"
 #include "video_core/renderer_d3d12/d3d12_graphics_pipeline.h"
@@ -1017,6 +1018,14 @@ bool FirstFailure(u64 key_hash) {
 } // Anonymous namespace
 
 void GraphicsPipeline::Build(bool flatten_on_fault) try {
+    if (PipelineQuarantine::IsBlocked(key.Hash())) {
+        BUG_TRACK_KEY(PipelineRejected, key.Hash(),
+                      "skipped the pipeline of VS {:016x} PS {:016x}: it crashed the driver in an "
+                      "earlier run (d3d12_blocked.txt)",
+                      key.unique_hashes[1], key.unique_hashes[5]);
+        pipeline_state.Reset();
+        return;
+    }
     const auto& stages = *dxil;
     std::vector<D3D12_INPUT_ELEMENT_DESC> elements;
     auto desc = Describe(elements);
@@ -1040,6 +1049,7 @@ void GraphicsPipeline::Build(bool flatten_on_fault) try {
                       static_cast<u32>(code), key.unique_hashes[1], key.unique_hashes[5]);
     };
     const auto create_pso = [&](ComPtr<ID3D12PipelineState>& handle) {
+        const PipelineQuarantine::Scope quarantine_scope{key.Hash()};
         DWORD fault = 0;
         if (bounds_test) {
             const HRESULT stream_hr = CallDriverGuarded(

@@ -16,6 +16,7 @@
 #include "video_core/engines/kepler_compute.h"
 #include "video_core/memory_manager.h"
 #include "video_core/renderer_d3d12/d3d12_barrier_batch.h"
+#include "video_core/renderer_d3d12/d3d12_pipeline_quarantine.h"
 #include "video_core/renderer_d3d12/d3d12_compute_pipeline.h"
 #include "video_core/renderer_d3d12/d3d12_descriptor_heap.h"
 #include "video_core/renderer_d3d12/d3d12_driver_guard.h"
@@ -180,6 +181,12 @@ void ComputePipeline::Configure(const ComputeBindContext& context, PipelineBindi
 }
 
 void ComputePipeline::Build() {
+    if (PipelineQuarantine::IsBlocked(unique_hash)) {
+        LOG_WARNING(Render, "D3D12: skipped compute pipeline {:016x}: it crashed the driver in an "
+                            "earlier run (d3d12_blocked.txt)",
+                    unique_hash);
+        return;
+    }
     const D3D12_COMPUTE_PIPELINE_STATE_DESC desc{
         .pRootSignature = layout.Handle(),
         .CS = {.pShaderBytecode = dxil.data(), .BytecodeLength = dxil.size()},
@@ -189,6 +196,7 @@ void ComputePipeline::Build() {
     };
     ID3D12Device* const raw = device.Get();
     DWORD fault = 0;
+    const PipelineQuarantine::Scope quarantine_scope{unique_hash};
     const HRESULT hr = CallDriverGuarded(
         [&] { return raw->CreateComputePipelineState(&desc, IID_PPV_ARGS(&pipeline_state)); },
         fault);

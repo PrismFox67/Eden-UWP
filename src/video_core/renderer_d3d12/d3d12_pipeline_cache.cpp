@@ -19,6 +19,7 @@
 #include "common/fs/fs.h"
 #include "common/fs/path_util.h"
 #include "common/logging.h"
+#include "video_core/renderer_d3d12/d3d12_pipeline_quarantine.h"
 #include "video_core/gpu_thread.h"
 #include "common/settings.h"
 #include "shader_recompiler/backend/spirv/emit_spirv.h"
@@ -762,6 +763,7 @@ void PipelineCache::LoadDiskResources(u64 title_id, std::stop_token stop_loading
     }
     pipeline_cache_filename = base_dir / "d3d12.bin";
     hot_pipelines_filename = base_dir / "d3d12_hot.bin";
+    PipelineQuarantine::Open(base_dir / "d3d12_blocked.txt");
     {
         std::ifstream file(hot_pipelines_filename, std::ios::binary);
         const std::vector<u8> bytes{std::istreambuf_iterator<char>(file),
