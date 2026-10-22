@@ -29,6 +29,7 @@
 #include <optional>
 #include <share.h>
 #include <span>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -2503,8 +2504,20 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
                         Windows::ApplicationModel::Package::Current().InstalledLocation().Path());
                     nro_path = install_path + "\\boot.nro";
                     WriteDiag("resolved NRO path: " + nro_path);
-                    std::ifstream cfg{install_path + "\\boot.cfg"};
+                    // LocalState\boot.cfg adds to the package's, so console A/B tests need no
+                    // repackaging.
+                    std::stringstream cfg;
+                    if (std::ifstream packaged{install_path + "\\boot.cfg"}) {
+                        cfg << packaged.rdbuf() << '\n';
+                    }
+                    if (std::ifstream local{std::filesystem::path{
+                            Windows::Storage::ApplicationData::Current().LocalFolder().Path().c_str()} /
+                                            L"boot.cfg"}) {
+                        WriteDiag("boot.cfg: LocalState overrides read");
+                        cfg << local.rdbuf();
+                    }
                     for (std::string line; std::getline(cfg, line);) {
+                        if (!line.empty() && line.back() == '\r') line.pop_back();
                         constexpr std::string_view key = "run_seconds=";
                         if (line.starts_with(key)) {
                             config.run_seconds =
