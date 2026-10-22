@@ -11,7 +11,7 @@
 #include <dynarmic/interface/code_memory.h>
 #include <dynarmic/interface/halt_reason.h>
 
-#include "common/logging/log.h"
+#include "common/logging.h"
 
 #include "core/arm/arm_interface.h"
 
