@@ -6,7 +6,7 @@ Decisions, open questions, and what has been verified on hardware (with build an
 - 2026-10-22: Test homebrew for the first console boot is `tools/xbox/boot_nro` (Jadyx's own open-source payload:
   a JIT liveness check plus a CPU-drawn test pattern, libnx only, no keys or firmware). CI builds it from source
   with devkitPro's official `devkitpro/devkita64` image (job `boot_nro`, artifact `boot-nro`).
-- 2026-10-22: Console A/B switches go in `LocalStateoot.cfg`, which now adds to the packaged boot.cfg:
+- 2026-10-22: Console A/B switches go in `LocalState\boot.cfg`, which now adds to the packaged boot.cfg:
   `jit_rwx=1` (RWX code memory instead of W^X, falls back to W^X; log line `JIT code memory: ...`) and
   `readback_uncached=1` (readback buffers in a write-combined custom heap; Magnesis suspect). Both default off
   until measured on the console.
