@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <atomic>
 #include <charconv>
 #include <chrono>
@@ -190,6 +191,8 @@ void ApplyProcessMemoryLimit(u32 limit_mib); // likewise
 [[noreturn]] void RestartApp();              // likewise
 std::string LargestAllocations();       // likewise
 std::string HeapReport();               // likewise
+std::string HeapLedger(std::vector<std::size_t>& top_sizes);  // likewise
+std::string LogFilePath(const char* name);  // likewise
 bool QueryAppMemory(u64& used, u64& limit);  // likewise
 /// A game's learned JIT prewarm step (Jadyx::PrewarmBudget), 0 when none is stored.
 std::int32_t LoadPrewarmStep(u64 program_id);  // likewise
@@ -387,6 +390,10 @@ struct BootConfig {
     /// Every minute of play, the process heaps and the memory map ("memory_audit=1"): what the
     /// commit no owner accounts for is made of. Walking the heaps locks them for a moment.
     bool memory_audit{};
+    /// "memory_ledger=1": memory_audit plus the heaps by size class, and the largest block sizes
+    /// saved to jadyx_alloc_sizes.txt; the next session with the switch watches those sizes from
+    /// boot (AllocWatch), so the heartbeats name the code that allocates them.
+    bool memory_ledger{};
     bool pool_trim{true};
     bool host_trim{true};
     /// Guest memory through the host-mapped arena. Xbox uses a bounded hybrid section; "full" is
@@ -1356,6 +1363,12 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
                 WriteDiag("heaps: " + HeapReport());
                 WriteDiag("memory map: " + LargestAllocations());
                 WriteDiag("memory by owner: " + MemoryOwners());
+                if (config.memory_ledger) {
+                    std::vector<std::size_t> top_sizes;
+                    WriteDiag("heap ledger: " + HeapLedger(top_sizes));
+                    std::ofstream sizes_file{LogFilePath("jadyx_alloc_sizes.txt"), std::ios::trunc};
+                    for (const std::size_t size : top_sizes) sizes_file << size << std::endl;
+                }
                 if (const std::string pso_cost = D3D12::DescribePsoCost(); !pso_cost.empty()) {
                     WriteDiag(pso_cost);
                 }
@@ -1899,6 +1912,45 @@ std::string HeapReport() {
         text += " " + std::to_string(sizes[i].first) + "B x" +
                 std::to_string(sizes[i].second.first) + "=" +
                 std::to_string(sizes[i].second.second >> 10) + "K";
+    }
+    return text;
+}
+
+// The live heap blocks by power-of-two size class, and the block sizes holding the most bytes
+// (the AllocWatch candidates). The unattributed commit is mostly these.
+std::string HeapLedger(std::vector<std::size_t>& top_sizes) {
+    std::vector<HANDLE> heaps(64);
+    const DWORD count = GetProcessHeaps(static_cast<DWORD>(heaps.size()), heaps.data());
+    heaps.resize(std::min<DWORD>(count, static_cast<DWORD>(heaps.size())));
+    std::array<std::pair<u64, u64>, 40> classes{}; // log2 bucket -> count, bytes
+    std::unordered_map<u64, u64> bytes_by_size;
+    for (const HANDLE heap : heaps) {
+        if (!HeapLock(heap)) continue;
+        PROCESS_HEAP_ENTRY entry{};
+        while (HeapWalk(heap, &entry)) {
+            if ((entry.wFlags & PROCESS_HEAP_ENTRY_BUSY) == 0) continue;
+            const u64 size = entry.cbData;
+            const std::size_t bucket =
+                (std::min<std::size_t>)(size == 0 ? 0 : std::bit_width(size) - 1, classes.size() - 1);
+            ++classes[bucket].first;
+            classes[bucket].second += size;
+            bytes_by_size[size] += size;
+        }
+        HeapUnlock(heap);
+    }
+    std::string text = "by size class (count=KiB):";
+    for (std::size_t i = 0; i < classes.size(); ++i) {
+        if (classes[i].first == 0) continue;
+        text += " " + std::to_string(u64{1} << i) + "B+ " + std::to_string(classes[i].first) + "=" +
+                std::to_string(classes[i].second >> 10) + "K";
+    }
+    std::vector<std::pair<u64, u64>> sizes(bytes_by_size.begin(), bytes_by_size.end());
+    std::sort(sizes.begin(), sizes.end(), [](const auto& a, const auto& b) { return a.second > b.second; });
+    top_sizes.clear();
+    text += "; largest block sizes (bytes=KiB):";
+    for (std::size_t i = 0; i < sizes.size() && i < Jadyx::AllocWatch::MAX_SIZES; ++i) {
+        top_sizes.push_back(static_cast<std::size_t>(sizes[i].first));
+        text += " " + std::to_string(sizes[i].first) + "=" + std::to_string(sizes[i].second >> 10) + "K";
     }
     return text;
 }
@@ -2915,6 +2967,19 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
                         } else if (line == "memory_audit=1") {
                             config.memory_audit = true;
                             WriteDiag("boot.cfg: memory audit every minute of play");
+                        } else if (line == "memory_ledger=1") {
+                            config.memory_audit = config.memory_ledger = true;
+                            // The block sizes the last ledger found largest, watched from boot so
+                            // the allocations made while the game loads are caught too.
+                            std::vector<std::size_t> sizes;
+                            std::ifstream sizes_file{LogFilePath("jadyx_alloc_sizes.txt")};
+                            for (std::size_t size; sizes.size() < Jadyx::AllocWatch::MAX_SIZES &&
+                                                   sizes_file >> size;) {
+                                sizes.push_back(size);
+                            }
+                            if (!sizes.empty()) Jadyx::AllocWatch::Watch(sizes);
+                            WriteDiag("boot.cfg: memory ledger every minute of play, watching " +
+                                      std::to_string(sizes.size()) + " block sizes from the last one");
                         } else if (line == "pulse_diag=1") {
                             Common::Pulse::SetDiagnostics(true);
                             WriteDiag("boot.cfg: Pulse diagnostics on (GPU VA, shader code, page watch)");

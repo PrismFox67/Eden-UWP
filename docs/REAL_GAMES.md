@@ -50,3 +50,19 @@ thread's phase table, and any `CRASH` / last-session notice. Then repeat once wi
 `timer_wait=coarse` added (one switch at a time) for the A/B.
 
 Compare against docs/PERF_DRAW.md (PC, draw_stress): GPU-thread us/draw = GPU ms/s / draws/s.
+
+## 4. Memory ledger (for the memory wall, PORTING.md #4)
+
+Two sessions of the same game with `memory_ledger=1` in `LocalState\boot.cfg` (no other switch):
+
+1. **Session 1** (play >= 2 minutes): every minute `jadyx_diag.txt` gets `heaps:`, `memory map:`,
+   `memory by owner:` and `heap ledger:` (live heap blocks by power-of-two size class, plus the 8
+   block sizes holding the most bytes). Those sizes are saved to `jadyx\log\jadyx_alloc_sizes.txt`.
+2. **Session 2** (same game, same switch): the app watches those 8 sizes from boot, so the
+   heartbeats log `alloc watch: <size> bytes from +0x...` for each one.
+3. On the PC with the same build's `jadyx.exe`/PDB:
+   `python tools/xbox/resolve-rva.py --exe <that jadyx.exe> jadyx_diag.txt > ledger.txt` names the
+   allocating functions (PC check, draw_stress: the 25 MB block is
+   `Kernel::KDynamicPageManager::Initialize`).
+
+Post `memory by owner` (last one), `heap ledger` (last one) and the resolved `alloc watch` stacks.
