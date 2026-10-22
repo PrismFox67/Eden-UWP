@@ -3,37 +3,36 @@ SPDX-FileCopyrightText: Copyright 2026 Eden Emulator Project
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
 
-<p align="center">
-  <img src="dist/uwp/Assets/JadyxLogo.png" alt="Jadyx logo" width="128">
-</p>
-
-<h1 align="center">Jadyx</h1>
+<h1 align="center">Eden UWP (unofficial)</h1>
 
 <p align="center">
-  A Nintendo Switch emulator for <b>Xbox Series X|S in Developer Mode</b>, based on Eden,<br>
-  with a <b>native Direct3D 12 renderer</b> written for this port.<br>
-</p>
-
-<p align="center">
-  <a href="https://github.com/JulianDr14/jadyx/releases/latest"><b>Download the latest release</b></a> ·
-  <a href="https://discord.gg/3BhyyXGxpd"><b>Discord</b></a> ·
-  <a href="https://github.com/JulianDr14/jadyx/issues/new/choose"><b>Report a bug</b></a>
+  A Nintendo Switch emulator for <b>Xbox Series X|S in Developer Mode</b>, built on
+  <a href="https://github.com/JulianDr14/jadyx"><b>Jadyx</b></a> and
+  <a href="https://git.eden-emu.dev/eden-emu/eden"><b>Eden</b></a>,<br>
+  with a native Direct3D 12 renderer.
 </p>
 
 <p align="center">
-  <img src="docs/assets/screens/home.jpg" alt="Jadyx home screen on Xbox Series X|S" width="900"><br>
-  <sub>The home screen. The games shown are made-up placeholders with original artwork: no Nintendo
-  images, names or game assets are used.</sub>
+  <a href="https://github.com/PrismFox67/Eden-UWP/releases"><b>Releases</b></a> ·
+  <a href="https://github.com/PrismFox67/Eden-UWP/issues"><b>Report a bug</b></a>
 </p>
 
-<p align="center">
-  <img src="docs/assets/screens/in-game-menu.png" alt="Jadyx in-game quick menu on Xbox Series X|S" width="900"><br>
-  <sub>The in-game quick menu. Hold <b>View + Menu</b> on the controller while playing to open it.</sub>
-</p>
+> **Credits first.** Almost everything in this repository is the work of others. Eden-UWP is a fork
+> of [Jadyx](https://github.com/JulianDr14/jadyx) by **JulianDr14**, which ported Eden to UWP and
+> wrote its Direct3D 12 renderer, front end and tooling. Jadyx in turn started from
+> [juanresendiz813/eden-xbox](https://github.com/juanresendiz813/eden-xbox). The emulator is
+> [Eden](https://git.eden-emu.dev/eden-emu/eden), from the yuzu lineage (yuzu, Sudachi, Citron,
+> Torzu, Suyu and everyone who worked on them). Lessons and code patterns come from our own Xbox port
+> of Cemu, [PrismFox67/Cemu-UWP](https://github.com/PrismFox67/Cemu-UWP). Please report problems with
+> this fork here, not to Jadyx or Eden.
 
-> **Beta.** Some games reach gameplay on the console and none is free of bugs. It contains no keys,
+> **Early.** Eden-UWP has its own package identity (`EdenUWP.Unofficial`), so it installs next to
+> Jadyx. Its updater is off until this project has its own release key. It contains no keys,
 > firmware or games and never will: use only the ones you dumped from a console and games you own.
-> See [Legal](#legal).
+> See [Legal](#legal). Our plan and notes: [docs/PLAN.md](docs/PLAN.md), [docs/NOTES.md](docs/NOTES.md),
+> [docs/CEMU_LESSONS.md](docs/CEMU_LESSONS.md).
+
+Most of the text below is Jadyx's README and describes Jadyx's measurements and design.
 
 **Contents:** [Progress](#progress) ([the memory wall](#the-memory-wall)) ·
 [Architecture](#architecture) · [Running it on a console](#running-it-on-a-console) ·
@@ -603,12 +602,12 @@ Design, phases and evidence: [docs/xbox/xbox_pulse.md](docs/xbox/xbox_pulse.md) 
 ## Running it on a console
 
 Requirements: an Xbox Series X|S in Developer Mode, the package from the
-[latest release](https://github.com/JulianDr14/jadyx/releases/latest) (or one you built, see
+[latest release](https://github.com/PrismFox67/Eden-UWP/releases) (or one you built, see
 [Building](#building)), and the keys, firmware and games dumped from your own Switch.
 
 1. Open the Device Portal at `https://<console-ip>:11443`.
-2. Install `Jadyx_<version>_x64.appx` together with its `Microsoft.VCLibs.x64.14.00.appx`
-   dependency and the `Jadyx.cer` certificate.
+2. Install `EdenUWP_<version>_x64.appx` together with its `Microsoft.VCLibs.x64.14.00.appx`
+   dependency and the `EdenUWP.cer` certificate.
 3. In the app's settings on the console, set it to **Game** mode. Otherwise the memory limit is much
    lower than the 5120 MiB the emulator expects.
 4. Start the app and send your keys, firmware and games from a PC or phone with the
@@ -618,12 +617,12 @@ Requirements: an Xbox Series X|S in Developer Mode, the package from the
    **Settings > File manager**, and add games from an external folder or USB drive, or copy them to
    the app's `LocalState\games` folder with the Device Portal file explorer.
 
-To update Jadyx, install the new package over the old one. Do not uninstall first: that deletes
+To update, install the new package over the old one. Do not uninstall first: that deletes
 the keys, firmware, saves and games stored in the app.
 
 If something fails, `jadyx_diag.txt` and `jadyx_log.txt` in `LocalState\jadyx\log` describe what
-happened. Help and compatibility reports live on [Discord](https://discord.gg/3BhyyXGxpd); bugs go to
-[GitHub Issues](https://github.com/JulianDr14/jadyx/issues/new/choose). The diagnostic switches are listed in [docs/xbox/xbox_deploy.md](docs/xbox/xbox_deploy.md).
+happened. Bugs go to
+[GitHub Issues](https://github.com/PrismFox67/Eden-UWP/issues). The diagnostic switches are listed in [docs/xbox/xbox_deploy.md](docs/xbox/xbox_deploy.md).
 
 ## Building
 
@@ -658,6 +657,8 @@ console test logs, including what went wrong and why.
 
 This fork stands on other people's work:
 
+- [Jadyx](https://github.com/JulianDr14/jadyx) by JulianDr14: the UWP port, the Direct3D 12
+  renderer, the front end and the tooling this fork is built on.
 - [Eden](https://git.eden-emu.dev/eden-emu/eden): the emulator itself. This fork tracks it through
   the [eden-emulator/mirror](https://github.com/eden-emulator/mirror) GitHub mirror.
 - [juanresendiz813/eden-xbox](https://github.com/juanresendiz813/eden-xbox): the UWP groundwork
@@ -675,12 +676,12 @@ This fork stands on other people's work:
 - yuzu, Ryujinx, Sudachi, Citron, Torzu, Suyu and Ryubing, and everyone who worked on the projects
   Eden comes from.
 
-Jadyx is an independent fork. It is not affiliated with or endorsed by the Eden project,
-Nintendo or Microsoft. Please do not report problems from this fork to Eden.
+Eden-UWP is an independent fork. It is not affiliated with or endorsed by the Eden project, the
+Jadyx project, Nintendo or Microsoft. Please do not report problems from this fork to Eden or Jadyx.
 
 ## Legal
 
-- Jadyx contains no Nintendo code, keys, firmware, games or game assets, and does not explain how to
+- This software contains no Nintendo code, keys, firmware, games or game assets, and does not explain how to
   obtain them. It runs only software you dumped yourself from hardware you own.
 - Screenshots in this repository use made-up placeholder games with original artwork, never
   Nintendo images or game assets.
