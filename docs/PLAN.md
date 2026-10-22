@@ -10,9 +10,10 @@ Developer Mode, with a native Direct3D 12 renderer, carrying over what we learne
 - Never add Switch keys, firmware or game files (or anything derived from them) to the repo, to commits, logs that get
   committed, or test fixtures. Users supply their own, dumped from hardware they own. Homebrew test programs must be
   open source (build them from source, or use releases of open-source projects).
-- The Cemu repo (C:/Users/jason/src/Cemu-UWP) is reference only for this project: read it, never modify it from here.
-- This repo stays local: no push anywhere until the owner decides where it is published (remotes have pushurl
-  DISABLED). The upstream remotes are fetch-only references.
+- The Cemu-UWP repo is reference only for this project: read it, never modify it from here.
+- Published as the public repo PrismFox67/Eden-UWP (owner's decision, 2026-10-22); only the owner pushes. The
+  upstream remotes are fetch-only references. Nothing committed may contain local paths, user names, IP addresses,
+  secrets or internal tooling details.
 - Platform code stays isolated (src/video_core/renderer_d3d12, a separate UWP frontend directory, small #ifdef'd hooks
   elsewhere) so rebasing onto upstream Eden stays manageable.
 - Match Eden's code style. Comment sparingly. ASCII only in code and commit messages. Small, focused commits with
@@ -32,10 +33,9 @@ Developer Mode, with a native Direct3D 12 renderer, carrying over what we learne
    - NspxMiguel/NXbox (remote `nxbox`): D3D12 via HLSL + DXC, Mesa OpenGL-on-D3D12 fallback, LAN shader cache
      sharing, GameBanana mods, NxbHelper. Being archived from 2026-10-24.
    - juanresendiz813/eden-xbox (remote `juan`): the UWP groundwork Jadyx started from (June 2026).
-   Whether we build on Jadyx's code or on a clean Eden fork is the owner's decision (asked 2026-10-22). Until then,
-   Steps 1-2 apply to both.
-2. **We can reach the Xbox.** The swarm's QA lane deploys packages and reads logs through the Device Portal
-   (swarm/Tools/Xbox/xbox.py, xbox lease). Feasibility tests (Step 3) run on the console by us; the owner is needed
+   Owner's decision (2026-10-22): **we build on Jadyx** (branch `main` starts from jadyx/main).
+2. **We can reach the Xbox.** Our test tooling deploys packages and reads logs through the Device Portal.
+   Console tests run by us; the owner is needed
    for controller sessions, visual checks and PIX captures.
 3. The Cemu D3D12 backend uses SPIRV-Cross -> HLSL -> DXC. Eden-on-Xbox prior art uses spirv_to_dxil on Eden's own
    SPIR-V; compare both in Step 2 before choosing.
@@ -47,20 +47,20 @@ Developer Mode, with a native Direct3D 12 renderer, carrying over what we learne
    architecture: descriptors, pipeline cache, barriers, upload/readback, swapchain, async compilation; bugs, runtime
    quirks, perf traps and fixes). Every item marked **verified on hardware** (with where: log, build, date) or
    **assumed**.
-2. **Recon and mapping - docs/PORTING.md.** Eden's video_core (renderer_vulkan, shader recompiler + SPIR-V emitter,
-   texture/buffer caches, ASTC decoder) and CPU/memory code (dynarmic, fastmem paths, HostMemory). Map each part to
-   our Cemu solution or flag it as new (expected new: bindless descriptors, ASTC, transform feedback, ARM64->x86 JIT,
-   Eden's memory mapping APIs). Plus a prior-art section: how Jadyx/NXbox/juan solved each part, what is worth taking,
-   and what they report as still broken.
-3. **Feasibility gaps only.** Small UWP test apps for anything CEMU_LESSONS.md and the prior art don't already prove
-   (dynarmic's executable memory, Eden's fastmem mapping calls, placeholder APIs in the AppContainer). Run them on the
-   console via QA.
-4. **Skeleton.** Port our Cemu UWP frontend and build setup to Eden (window, input, file access, packaging), null
-   renderer, boot an open-source homebrew test program on the console.
-5. **renderer_d3d12** next to renderer_vulkan behind the video_core interfaces, reusing the Cemu backend's
-   architecture: SPIR-V -> DXIL, compute ASTC decoding, disk pipeline cache.
-6. **Performance**, profile-driven (owner captures PIX traces on request): CPU/JIT hot paths first, then the
-   CPU-aware async shader queue, then memory paging and eviction.
+2. **Recon of Eden + Jadyx - docs/PORTING.md.** Map each subsystem: Eden original vs Jadyx's change vs what our Cemu
+   lessons say. Prior art from nxbox/main worth taking before it is archived on 2026-10-24 (mods/GameBanana, LAN
+   shader cache sharing, NxbHelper, HLSL+DXC path, anything better than Jadyx). A ranked list of improvements
+   (impact x effort).
+3. **Our own identity and build.** Rename the app, package identity and publisher so it installs next to Jadyx
+   ("Eden UWP (unofficial)", `EdenUWP.Unofficial`); point the self-updater at PrismFox67/Eden-UWP releases or disable
+   it (never Jadyx's feed or signing key); keep every Jadyx/Eden credit; README for Eden-UWP with credits; build it
+   locally and in CI.
+4. **Baseline on the Xbox** via QA: open-source homebrew first, real games once the owner has dumped their own.
+5. **Our improvements**, profile-driven (owner captures PIX traces on request): CPU/JIT and fastmem, per-draw CPU
+   cost in the D3D12 backend, the memory wall, the CPU-aware async shader queue, frontend lessons from Cemu.
+6. **Feasibility tests** for anything CEMU_LESSONS.md section 6 lists that Jadyx doesn't already prove, when an
+   improvement in Step 5 depends on it.
+
 
 Design input from another developer's working port (from the owner's discussion): native D3D12 with spirv_to_dxil on
 Eden's SPIR-V; fastmem and JIT work in the sandbox on Series X; BotW is CPU-bound (1x vs 2x resolution barely changes

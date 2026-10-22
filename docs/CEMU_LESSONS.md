@@ -4,11 +4,11 @@ Step 1 of docs/PLAN.md. Everything we learned getting Cemu (PrismFox67/Cemu-UWP,
 an Xbox Series X in Developer Mode, written down before any Eden code is touched.
 
 Every item is tagged:
-- **[HW]** verified on hardware, with where (Xbox log in `swarm/Logs/Agents/xbox_logs/<build>/`, commit, date).
+- **[HW]** verified on hardware, with where (Xbox log of a Cemu-UWP build, commit, date).
 - **[PC]** verified on a Windows PC only (Win32 host or the UWP package on Windows).
 - **[assumed]** documented, reported by others, or inferred, but never proven by us on the console.
 
-Paths starting with `Cemu:` are relative to `C:/Users/jason/src/Cemu-UWP`. Build ids are Cemu-UWP commits.
+Paths starting with `Cemu:` are relative to a checkout of github.com/PrismFox67/Cemu-UWP. Build ids are Cemu-UWP commits.
 
 ## 1. Packaging, deployment and debugging
 
@@ -35,7 +35,7 @@ Paths starting with `Cemu:` are relative to `C:/Users/jason/src/Cemu-UWP`. Build
 - CI (`Cemu:.github/workflows/uwp_fork_ci.yml`, windows-2022, vcpkg with a UWP triplet) builds three things: the
   desktop renderer build, the Win32 host (the Xbox frontend as a normal exe) and the msix. A run takes about an hour.
   The Win32 host is the most useful one: it reproduces most frontend and renderer bugs on a PC with a debugger.
-- `Cemu:tools/build-uwp-local.ps1` builds locally. The laptop (8 threads, 16 GB) is shared: use /m:4 or -j4.
+- `Cemu:tools/build-uwp-local.ps1` builds locally.
 - Every vcpkg dependency must build for the UWP triplet (no Win32-only APIs). In Cemu that removed Vulkan/OpenGL,
   cubeb, SDL, wxWidgets, DirectInput and Wiimotes from the UWP build. Eden will hit the same wall with SDL2 (input,
   audio), Qt, Vulkan loader, OpenGL, libusb, and anything using `GetModuleHandle`, `LoadLibrary` (use
@@ -44,16 +44,16 @@ Paths starting with `Cemu:` are relative to `C:/Users/jason/src/Cemu-UWP`. Build
   apartment (d91cf6f). **[HW]**
 
 ### 1.3 Deploy and debug workflow
-- Device Portal REST API on `https://<console>:11443` (self-signed cert, basic auth). The swarm wraps it in
-  `swarm/Tools/Xbox/xbox.py`: `status`, `apps`, `deploy <msix> <deps>`, `launch`, `kill`, `screenshot`, `home`, and
-  `ls/get/put/mkdir` in an app's LocalAppData. Every call takes the `xbox` lease. **[HW]**
+- Device Portal REST API on `https://<console>:11443` (self-signed cert, basic auth). Our tooling wraps it in
+  a small script (`xbox.py`): `status`, `apps`, `deploy <msix> <deps>`, `launch`, `kill`, `screenshot`, `home`, and
+  `ls/get/put/mkdir` in an app's LocalAppData. **[HW]**
   - Install: POST msix + VCLibs as FormData to `/api/app/packagemanager/package?package=<name>` with the CSRF-Token
     cookie as `X-CSRF-Token`, poll `/api/app/packagemanager/state`. **[HW]**
   - Files: `/api/filesystem/apps/files|file|folder?knownfolderid=LocalAppData&packagefullname=<pkg>&path=\LocalState\..`
     (file GET needs `&filename=`). **[HW]**
   - If fetches fail with "Failed to fetch" the portal itself is stuck; only a Device Portal restart on the console
     helps. **[HW]**
-  - From this lane: never deploy yourself, file QA tickets with `needs=xbox`.
+
 - The log is the only debugger on the console. What made it work:
   - Create the log file at startup, keep `log_previous.txt` from the last session (b874f92). **[HW]**
   - A session marker file (`session_running.txt`) so the next start knows the last one crashed and shows a notice.
@@ -67,7 +67,7 @@ Paths starting with `Cemu:` are relative to `C:/Users/jason/src/Cemu-UWP`. Build
   - D3D12 DRED (auto-breadcrumbs + page fault) is available on the console, and device checkpoints logged before
     suspicious calls (588955b) found the pipeline library removal. **[HW]** (log "Device removed diagnostics (DRED)
     enabled", aeaba14)
-- No PIX or debugger attach from the swarm; the owner takes PIX captures on request. **[assumed]** that PIX works
+- No PIX or debugger attach from our tooling; the owner takes PIX captures on request. **[assumed]** that PIX works
   against Dev Mode UWP; we have not done it.
 
 ## 2. CPU, memory and the sandbox
@@ -77,7 +77,7 @@ Paths starting with `Cemu:` are relative to `C:/Users/jason/src/Cemu-UWP`. Build
   `MapViewOfFileFromApp`. `VirtualAllocFromApp` rejects executable protections at allocation time.
 - What works on the console: allocate RW with `VirtualAllocFromApp`, then `VirtualProtectFromApp(...,
   PAGE_EXECUTE_READWRITE)`. Log line `MemMapper: using read/write/execute memory for generated code`. **[HW]**
-  (aeaba14 log_packs.txt and crash_1020 log, 2026-10-20). So with `codeGeneration`, **RWX pages are allowed on Series X
+  (Xbox logs of aeaba14, 2026-10-20). So with `codeGeneration`, **RWX pages are allowed on Series X
   Dev Mode** - no W^X needed for Cemu.
 - Fallback that exists but was never needed on the console: one section from `CreateFileMappingFromApp(...,
   PAGE_EXECUTE_READWRITE)` mapped twice, a RW view and a RX view, and the recompiler writes through one and runs the
@@ -145,7 +145,7 @@ Paths starting with `Cemu:` are relative to `C:/Users/jason/src/Cemu-UWP`. Build
 
 | Item | Value | Status |
 |---|---|---|
-| Adapter name | `SraKmd_arden` | **[HW]** aeaba14, crash_1020 (2026-10-20) |
+| Adapter name | `SraKmd_arden` | **[HW]** aeaba14 (2026-10-20) |
 | Device creation | `D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0)` succeeds | **[HW]** |
 | Highest feature level | not logged by Cemu | **[assumed]** 12_1 hardware; Jadyx creates at 11_0 |
 | Shader model | DXC/DXIL shaders run, so >= 6.0 | **[HW]** (log `Shader compiler: dxc`, MK8 runs); exact max **[assumed]** 6.4 (Jadyx) |
@@ -166,7 +166,7 @@ Consequences we designed around:
   from a recorded list. Never call `CreatePipelineLibrary`, `GetCachedBlob` or `CachedPSO` on `SraKmd*`; detect by
   adapter name, the caps flags lie. **[HW]**
 - **Some pipelines crash the driver at creation.** Cemu writes a pipeline hash to `<title>_blocked.txt` before a
-  creation that never returned and skips it afterwards (f3209f9). MK8 has 3 such pipelines. **[HW]** (crash_1020)
+  creation that never returned and skips it afterwards (f3209f9). MK8 has 3 such pipelines. **[HW]** (aeaba14 crash log)
 - **Device reset.** After a removal, `D3D12CreateDevice` in the same process hands back the old removed device if any
   reference survived; the only recovery is restarting the app, so say so to the user (732a0a5). **[HW]** (BOTW at high
   memory, 2026-10-18)
