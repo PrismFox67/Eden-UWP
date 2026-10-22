@@ -40,7 +40,7 @@ jobs:
     uses: ./.github/workflows/build.yml
     with:
       package: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.package) }}
-      package_revision: ${{ github.event_name == 'push' && format('{0}', github.run_number) || '' }}
+      package_revision: ${{ format('{0}', github.run_number) }}
     secrets: inherit
 
   # Every push to main refreshes the "ci-latest" pre-release for testers (like Cemu-UWP's ci-latest).
