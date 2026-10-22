@@ -1,0 +1,33 @@
+# SPDX-FileCopyrightText: Copyright 2026 Eden-UWP contributors
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Keeps the running download totals of the ci-latest files up to date (GitHub resets a file's count when a build
+# replaces it): every 6 hours, and on demand. Writes totals.json to the download-stats release (the README badge reads
+# it) and a "Downloads so far" line into the ci-latest release notes. Same idea as Cemu-UWP's download_totals.yml.
+
+name: Download totals
+
+on:
+  schedule:
+    - cron: "41 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  totals:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: tools/ci
+      - name: Count and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view ci-latest >/dev/null 2>&1 || exit 0
+          for a in $(gh api "repos/$GITHUB_REPOSITORY/releases/tags/ci-latest" --jq '.assets[].name'); do
+            bash tools/ci/keep_download_count.sh "$a" || true
+          done
+          bash tools/ci/keep_download_count.sh --json

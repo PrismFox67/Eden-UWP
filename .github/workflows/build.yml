@@ -17,6 +17,10 @@ on:
         description: Package version for a release (MAJOR.MINOR.BUILD.REVISION); empty keeps the manifest's
         type: string
         default: ""
+      package_revision:
+        description: CI builds - replaces the REVISION of the manifest's version (ignored if package_version is set)
+        type: string
+        default: ""
     secrets:
       JADYX_PFX_BASE64:
         required: false
@@ -231,7 +235,7 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: jadyx-build
+          name: eden-uwp-build
           retention-days: 7
           if-no-files-found: error
           path: |
@@ -250,7 +254,7 @@ jobs:
 
       - uses: actions/download-artifact@v8
         with:
-          name: jadyx-build
+          name: eden-uwp-build
           path: build-uwp/bin
 
       - uses: actions/download-artifact@v8
@@ -264,6 +268,7 @@ jobs:
           JADYX_PFX_BASE64: ${{ secrets.JADYX_PFX_BASE64 }}
           JADYX_PFX_PASSWORD: ${{ secrets.JADYX_PFX_PASSWORD }}
           PACKAGE_VERSION: ${{ inputs.package_version }}
+          PACKAGE_REVISION: ${{ inputs.package_revision }}
         run: |
           $ErrorActionPreference = "Stop"
           # Every package carries the project's certificate, so the console updates in place.
@@ -283,7 +288,15 @@ jobs:
               Write-Host "::warning::No signing secrets, signing with a per-run test certificate"
               $params.MintTestCertificate = $true
           }
-          if ($env:PACKAGE_VERSION) { $params.Version = $env:PACKAGE_VERSION }
+          if ($env:PACKAGE_VERSION) {
+              $params.Version = $env:PACKAGE_VERSION
+          } elseif ($env:PACKAGE_REVISION) {
+              # CI builds: MAJOR.MINOR.BUILD of the manifest and the run number as REVISION, so each
+              # installs over the previous one and the next release (higher BUILD) over all of them.
+              [xml]$src = Get-Content dist\uwp\AppxManifest.xml -Raw
+              $parts = $src.Package.Identity.Version.Split('.')
+              $params.Version = "$($parts[0]).$($parts[1]).$($parts[2]).$([int]$env:PACKAGE_REVISION % 65536)"
+          }
           try { & tools\xbox\package-appx.ps1 @params } finally { if ($pfx) { Remove-Item $pfx -Force } }
 
           [xml]$mf = Get-Content build-uwp\package\layout\AppxManifest.xml -Raw
@@ -305,7 +318,7 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: jadyx-package
+          name: eden-uwp-package
           path: out/*
           if-no-files-found: error
           retention-days: 14

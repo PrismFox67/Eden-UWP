@@ -92,7 +92,7 @@ jobs:
 
       - uses: actions/download-artifact@v8
         with:
-          name: jadyx-package
+          name: eden-uwp-package
           path: out
 
       - name: Sign update metadata

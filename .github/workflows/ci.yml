@@ -1,8 +1,8 @@
 # SPDX-FileCopyrightText: Copyright 2026 Jadyx Project
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# Every pull request must build. A merge to main does not build again: the PR already built the
-# merged result (pull_request checks out the merge commit), and Release builds main itself. Run it
+# Every pull request must build. Every push to main builds a signed appx (package version =
+# manifest MAJOR.MINOR.BUILD + run number) and publishes it as the "ci-latest" pre-release. Run it
 # by hand (Actions -> CI -> Run workflow, on any branch) to also get a signed test appx as a 14-day
 # artifact.
 
@@ -40,4 +40,53 @@ jobs:
     uses: ./.github/workflows/build.yml
     with:
       package: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.package) }}
+      package_revision: ${{ github.event_name == 'push' && format('{0}', github.run_number) || '' }}
     secrets: inherit
+
+  # Every push to main refreshes the "ci-latest" pre-release for testers (like Cemu-UWP's ci-latest).
+  publish:
+    name: ci-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    concurrency:
+      group: ci-latest
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            tools/ci
+            CHANGELOG.md
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: eden-uwp-package
+          path: out
+
+      - name: Publish ci-latest
+        run: |
+          set -euo pipefail
+          version=$(python3 -c "import json; print(json.load(open('out/build-info.json'))['version'])")
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          gh release view ci-latest >/dev/null 2>&1 || gh release create ci-latest --prerelease --target "$GITHUB_SHA" \
+            --title "CI build" --notes "Automatic builds of main for testers. Not an official release."
+          # Count the downloads of the files this build replaces, then drop the ones with an older version in the name.
+          for a in $(gh api "repos/$GITHUB_REPOSITORY/releases/tags/ci-latest" --jq '.assets[].name'); do
+            bash tools/ci/keep_download_count.sh "$a" || true
+            [ -e "out/$a" ] || gh release delete-asset ci-latest "$a" --yes
+          done
+          gh release upload ci-latest out/* --clobber
+          # Move the tag so "Source code" matches the build.
+          gh api -X PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/ci-latest" -f sha="$GITHUB_SHA" -F force=true >/dev/null || true
+          gh release edit ci-latest --prerelease --title "CI build (main @ ${GITHUB_SHA::7}, $version)"
+
+      - name: Release notes
+        run: |
+          bash tools/ci/release_notes.sh "$VERSION"
+          bash tools/ci/keep_download_count.sh --json || true

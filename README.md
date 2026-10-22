@@ -14,7 +14,12 @@ SPDX-License-Identifier: GPL-3.0-or-later
 
 <p align="center">
   <a href="https://github.com/PrismFox67/Eden-UWP/releases"><b>Releases</b></a> ·
-  <a href="https://github.com/PrismFox67/Eden-UWP/issues"><b>Report a bug</b></a>
+  <a href="https://github.com/PrismFox67/Eden-UWP/issues"><b>Report a bug</b></a> ·
+  <a href="https://github.com/PrismFox67/Eden-UWP/releases/tag/ci-latest"><b>Latest test build</b></a>
+</p>
+
+<p align="center">
+  <img alt="Xbox app downloads" src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgithub.com%2FPrismFox67%2FEden-UWP%2Freleases%2Fdownload%2Fdownload-stats%2Ftotals.json&query=%24.xbox&label=Xbox%20app%20downloads&color=107c10&cacheSeconds=3600">
 </p>
 
 > **Credits first.** Almost everything in this repository is the work of others. Eden-UWP is a fork
