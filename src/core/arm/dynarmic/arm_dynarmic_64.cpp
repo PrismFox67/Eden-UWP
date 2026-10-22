@@ -357,6 +357,7 @@ void ArmDynarmic64::MakeJit(Common::PageTable* page_table, std::size_t address_s
         config.fastmem_exclusive_access = false;
     }
     m_jit.emplace(config);
+    LogJitCodeMemoryMode();
 }
 
 HaltReason ArmDynarmic64::RunThread(Kernel::KThread* thread) {

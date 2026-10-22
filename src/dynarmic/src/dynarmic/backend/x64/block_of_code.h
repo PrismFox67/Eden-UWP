@@ -194,6 +194,8 @@ private:
     const u8* wx_write_begin = nullptr;
     std::vector<const u8*> wx_extra_pages;
     bool wx_writing = false;
+    // Read/write/execute code pages (SetPreferRwxCodeMemory): no W^X page flips at all.
+    bool rwx = false;
 #endif
     bool prelude_complete = false;
 

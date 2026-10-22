@@ -289,6 +289,7 @@ void ArmDynarmic32::MakeJit(Common::PageTable* page_table) {
         config.fastmem_exclusive_access = false;
     }
     m_jit.emplace(config);
+    LogJitCodeMemoryMode();
 }
 
 static std::pair<u32, u32> FpscrToFpsrFpcr(u32 fpscr) {

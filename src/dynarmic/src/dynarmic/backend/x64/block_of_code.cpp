@@ -68,10 +68,20 @@ namespace Dynarmic {
 namespace {
 /// Committed bytes of every BlockOfCode alive (CommittedCodeBytes).
 std::atomic<size_t> s_committed_code_bytes{0};
+std::atomic<bool> s_prefer_rwx{false};
+std::atomic<bool> s_rwx_active{false};
 } // anonymous namespace
 
 size_t CommittedCodeBytes() noexcept {
     return s_committed_code_bytes.load(std::memory_order_relaxed);
+}
+
+void SetPreferRwxCodeMemory(bool prefer) noexcept {
+    s_prefer_rwx.store(prefer, std::memory_order_relaxed);
+}
+
+bool RwxCodeMemoryActive() noexcept {
+    return s_rwx_active.load(std::memory_order_relaxed);
 }
 } // namespace Dynarmic
 
@@ -281,12 +291,18 @@ BlockOfCode::BlockOfCode(RunCodeCallbacks cb, JitStateInfo jsi, size_t total_cod
     , jsi(jsi)
     , cb(std::move(cb))
 {
+#if defined(_WIN32) && defined(DYNARMIC_ENABLE_NO_EXECUTE_SUPPORT)
+    rwx = s_prefer_rwx.load(std::memory_order_relaxed);
+#endif
     EnableWriting();
     EnsureMemoryCommitted(PRELUDE_COMMIT_SIZE);
 #if defined(_WIN32) && defined(DYNARMIC_ENABLE_NO_EXECUTE_SUPPORT)
     // Code starts on a page of its own, so the constant pool pages below never need execute.
     align(WX_PAGE_SIZE);
     wx_exec_begin = getCurr<const u8*>();
+#endif
+#if defined(_WIN32) && defined(DYNARMIC_ENABLE_NO_EXECUTE_SUPPORT)
+    s_rwx_active.store(rwx, std::memory_order_relaxed);
 #endif
     GenRunCode(rcp);
 }
@@ -308,7 +324,9 @@ void BlockOfCode::PreludeComplete() {
     ClearCache();
 #if defined(_WIN32) && defined(DYNARMIC_ENABLE_NO_EXECUTE_SUPPORT)
     wx_exec_end = WxPageUp(static_cast<const u8*>(code_begin));
-    ProtectMemory(wx_exec_begin, wx_exec_end - wx_exec_begin, true);
+    if (!rwx) {
+        ProtectMemory(wx_exec_begin, wx_exec_end - wx_exec_begin, true);
+    }
 #else
     DisableWriting();
 #endif
@@ -324,7 +342,7 @@ void BlockOfCode::PreludeComplete() {
 void BlockOfCode::EnableWriting() {
 #ifdef DYNARMIC_ENABLE_NO_EXECUTE_SUPPORT
 #    ifdef _WIN32
-    if (!prelude_complete || wx_writing) {
+    if (!prelude_complete || wx_writing || rwx) {
         return; // before PreludeComplete everything committed is still RW
     }
     wx_writing = true;
@@ -341,7 +359,7 @@ void BlockOfCode::EnableWriting() {
 void BlockOfCode::DisableWriting() {
 #ifdef DYNARMIC_ENABLE_NO_EXECUTE_SUPPORT
 #    ifdef _WIN32
-    if (!prelude_complete || !wx_writing) {
+    if (!prelude_complete || !wx_writing || rwx) {
         return;
     }
     wx_writing = false;
@@ -373,7 +391,7 @@ void BlockOfCode::DisableWriting() {
 
 void BlockOfCode::MakeWritable([[maybe_unused]] CodePtr where, [[maybe_unused]] size_t size) {
 #if defined(_WIN32) && defined(DYNARMIC_ENABLE_NO_EXECUTE_SUPPORT)
-    if (!prelude_complete || !wx_writing) {
+    if (!prelude_complete || !wx_writing || rwx) {
         return;
     }
     const u8* const begin = static_cast<const u8*>(where);
@@ -395,7 +413,7 @@ void BlockOfCode::ClearCache() {
 #if defined(_WIN32) && defined(DYNARMIC_ENABLE_NO_EXECUTE_SUPPORT)
     // Code is emitted from code_begin again: hand the old blocks' pages back to the RW tail.
     const u8* const tail = WxPageUp(static_cast<const u8*>(code_begin));
-    if (wx_exec_end != nullptr && tail < wx_exec_end) {
+    if (!rwx && wx_exec_end != nullptr && tail < wx_exec_end) {
         ProtectMemory(tail, wx_exec_end - tail, false);
         wx_exec_end = tail;
     }
@@ -435,6 +453,16 @@ void BlockOfCode::EnsureMemoryCommitted([[maybe_unused]] size_t codesize) {
 #        else
         (void)committed;
 #        endif
+        // Commit can't ask for execute under the AppContainer, so RWX is a protect afterwards. If the
+        // first one is refused nothing has run yet and the cache stays on W^X.
+        if (rwx && committed != nullptr && commit_begin < commit_end) {
+            DWORD old_protect = 0;
+            if (!DYNARMIC_VIRTUAL_PROTECT(const_cast<u8*>(commit_begin), commit_end - commit_begin,
+                                          PAGE_EXECUTE_READWRITE, &old_protect)) {
+                ASSERT_MSG(!prelude_complete, "RWX refused after code was emitted");
+                rwx = false;
+            }
+        }
 #    else
         // RWX fast path — desktop only. Never compiled under DYNARMIC_UWP_APPCONTAINER, which
         // forces DYNARMIC_ENABLE_NO_EXECUTE_SUPPORT on (the AppContainer never grants RWX).

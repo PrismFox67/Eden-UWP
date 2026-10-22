@@ -8,7 +8,10 @@
 
 #include <atomic>
 
+#include <dynarmic/interface/code_memory.h>
 #include <dynarmic/interface/halt_reason.h>
+
+#include "common/logging/log.h"
 
 #include "core/arm/arm_interface.h"
 
@@ -37,6 +40,15 @@ constexpr HaltReason TranslateHaltReason(Dynarmic::HaltReason hr) {
 inline std::atomic<u32> g_jit_code_cache_size{};
 inline void SetJitCodeCacheSize(u32 bytes) {
     g_jit_code_cache_size.store(bytes, std::memory_order_relaxed);
+}
+
+/// Logs whether the JIT just created runs from read/write/execute or W^X code memory, on changes.
+inline void LogJitCodeMemoryMode() {
+    static std::atomic<int> logged{-1};
+    const int rwx = Dynarmic::RwxCodeMemoryActive() ? 1 : 0;
+    if (logged.exchange(rwx, std::memory_order_relaxed) != rwx) {
+        LOG_INFO(Core_ARM, "JIT code memory: {}", rwx ? "read/write/execute" : "W^X");
+    }
 }
 inline u32 JitCodeCacheSize(u32 default_bytes) {
     const u32 bytes = g_jit_code_cache_size.load(std::memory_order_relaxed);

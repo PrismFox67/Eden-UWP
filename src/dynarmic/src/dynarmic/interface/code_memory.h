@@ -12,4 +12,11 @@ namespace Dynarmic {
 /// elsewhere the whole cache is committed up front and this stays 0.
 std::size_t CommittedCodeBytes() noexcept;
 
+/// Builds with W^X support (Windows): ask code caches created from now on for read/write/execute
+/// pages instead of flipping pages between RW and RX. A cache the system refuses RWX keeps W^X.
+void SetPreferRwxCodeMemory(bool prefer) noexcept;
+
+/// Whether the last code cache created got read/write/execute pages.
+bool RwxCodeMemoryActive() noexcept;
+
 } // namespace Dynarmic
