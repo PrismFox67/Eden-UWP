@@ -3,6 +3,10 @@
 Decisions, open questions, and what has been verified on hardware (with build and date). Newest first.
 
 ## Decisions
+- 2026-10-22: Profiling workload `tools/xbox/draw_stress` (our own GPL source, OpenGL via devkitPro's
+  switch-mesa/glad): 4000 uniform+draw calls per frame for 60 s, logs `DRAW_STRESS fps=.. draws=..`
+  each second and `DRAW_STRESS_DONE`. CI builds it with devkitpro/devkita64 (artifact draw-stress-nro).
+  First PC profile: docs/PERF_DRAW.md (host ~1.2 us/draw; HostTiming spins 43% of a core).
 - 2026-10-22: Test homebrew for the first console boot is `tools/xbox/boot_nro` (Jadyx's own open-source payload:
   a JIT liveness check plus a CPU-drawn test pattern, libnx only, no keys or firmware). CI builds it from source
   with devkitPro's official `devkitpro/devkita64` image (job `boot_nro`, artifact `boot-nro`).
@@ -27,7 +31,3 @@ Decisions, open questions, and what has been verified on hardware (with build an
 
 ## Verified on hardware
 - (nothing yet for this project; Cemu facts are in CEMU_LESSONS.md)
-- 2026-10-22: Profiling workload `tools/xbox/draw_stress` (our own GPL source, OpenGL via devkitPro's
-  switch-mesa/glad): 4000 uniform+draw calls per frame for 60 s, logs `DRAW_STRESS fps=.. draws=..`
-  each second and `DRAW_STRESS_DONE`. CI builds it with devkitpro/devkita64 (artifact draw-stress-nro).
-  Not yet compiled locally (no devkitPro on this PC) - first CI run is its first build.
