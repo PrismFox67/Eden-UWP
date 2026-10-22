@@ -553,7 +553,7 @@ struct NetworkPortal::Impl {
             return httplib::Server::HandlerResponse::Unhandled;
         });
         server->Get("/", [](const auto&, auto& response) {
-            response.set_content(PortalWeb::Page.data(), PortalWeb::Page.size(), "text/html; charset=utf-8");
+            response.set_content(PortalWeb::Page().data(), PortalWeb::Page().size(), "text/html; charset=utf-8");
         });
         server->Get("/logo.png", [](const auto&, auto& response) {
             response.set_content(reinterpret_cast<const char*>(PortalWeb::Logo), PortalWeb::LogoSize, "image/png");

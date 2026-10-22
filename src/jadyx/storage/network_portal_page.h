@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright 2026 Jadyx Project
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
+#include <string>
 #include <string_view>
 namespace Jadyx::PortalWeb {
 // The page is laid out like the console frontend: the wordmark and segmented tabs in the header,
@@ -8,7 +9,10 @@ namespace Jadyx::PortalWeb {
 // library's games open into their updates/DLC. Palette, Inter and capsule buttons follow
 // Jadyx::Palette; the only colour is the logo's. The CSP allows images from the portal itself
 // (/logo.png) and nothing external, so icons are inline SVG.
-inline constexpr std::string_view Page=R"HTML(<!doctype html>
+// MSVC caps one string literal at 16380 bytes and a concatenated one at 65535 (C2026), so the
+// page is stored in pieces and joined once on first use.
+inline constexpr std::string_view PageParts[]={
+R"HTML(<!doctype html>
 <html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#08090b"><link rel="icon" href="/logo.png"><title>Jadyx Portal</title><style>
 :root{color-scheme:dark;--canvas:#08090b;--surface:#111315;--row:#16181b;--graphite:#1c1f23;--active:#26282b;--text:#f5f5f7;--muted:#92959a;--hint:#b4b7bb;
@@ -135,7 +139,8 @@ body.updating .tabs{visibility:hidden}body.updating #view-content,body.updating 
 a.pill{display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 20px;border-radius:999px;border:1px solid var(--line);font-size:14px;font-weight:600;
  color:var(--hint);text-decoration:none}a.pill:hover{color:var(--text);border-color:rgba(255,255,255,.3)}a.pill .ico{width:16px;height:16px}
 .keep{padding:14px 16px;border-radius:14px;color:var(--warn);background:rgba(240,194,122,.08);border:1px solid rgba(240,194,122,.24)}
-#update-skip{margin:24px 0 0;align-self:center}.update-foot{display:flex;justify-content:center}
+)HTML",
+R"HTML(#update-skip{margin:24px 0 0;align-self:center}.update-foot{display:flex;justify-content:center}
 .installing{padding:24px 0 8px;text-align:center}.installing p{max-width:30em;margin:10px auto 0}.installing button{margin-top:24px}
 .spin{width:48px;height:48px;margin:0 auto 22px;border-radius:50%;border:3px solid var(--graphite);border-top-color:var(--cyan);animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -242,7 +247,8 @@ const words=pt?{
  speed:'Velocidade',eta:'Tempo restante',queue:'Na fila',choose:'Selecione um ou mais arquivos NSP.',same:'Há outro arquivo pendente. Selecione o mesmo arquivo para retomá-lo ou apague a transferência parcial.',
  receiving:'Recebendo',paused:'Pausado. Selecione o mesmo arquivo para continuar.',ready:'Aguardando validação',validating:'Validando NSP',publishing:'Adicionando à biblioteca',complete:'Instalado na biblioteca',
  busy:'Aguarde o fim da operação no Jadyx.',exists:'Esse nome já existe. Altere o nome de destino e tente de novo.',space:'Não há espaço suficiente.',
- file:'Nome ou arquivo inválido. Selecione um NSP.',base:'Somente jogos base são aceitos; não atualizações, DLC nem pacotes mistos.',
+)HTML",
+R"HTML( file:'Nome ou arquivo inválido. Selecione um NSP.',base:'Somente jogos base são aceitos; não atualizações, DLC nem pacotes mistos.',
  nsp:'A estrutura do NSP é inválida.',incomplete:'O NSP está incompleto.',keys:'Não foi possível ler os metadados. Verifique as chaves do seu console e o arquivo NSP.',
  disk:'Não foi possível gravar ou publicar o arquivo.',interrupted:'Transferência interrompida. Você pode retomar a partir do progresso confirmado.',
  partial:'Há uma transferência pendente. Retome ou apague.',recovery:'Não foi possível recuperar o arquivo parcial. Apague-o antes de iniciar outro.',unavailable:'A importação não está disponível no momento.',
@@ -388,7 +394,8 @@ async function sendFile(file,name,target=gameTarget){
  if(s.fingerprint!==signature||s.length!==file.size||(s.tag||'')!==target.tag)throw Error('same');
  currentId=s.id;
  if(s.name!==name)await api(target.base+'/'+currentId+'/rename',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
- }else{
+)HTML",
+R"HTML( }else{
  const metadata=Object.entries({filename:name,fingerprint:signature,...target.metadata}).map(([key,value])=>key+' '+base64(value)).join(',');
  const created=await api(target.base,{method:'POST',headers:{'Upload-Length':String(file.size),'Upload-Metadata':metadata}});
  currentId=created.headers.get('Location').split('/').pop();
@@ -567,7 +574,8 @@ function renderLibrary(){
  $('game-warning').textContent=game.removable?libraryWords.warning:libraryWords.external;
  const active=s.id&&!['complete','validating','publishing'].includes(s.phase);
  $('content-files').disabled=contentRunning;
- $('content-send').disabled=busy||s.available===false||['ready','validating','publishing'].includes(s.phase);
+)HTML",
+R"HTML( $('content-send').disabled=busy||s.available===false||['ready','validating','publishing'].includes(s.phase);
  $('content-pause').disabled=!active||systemRunning;$('content-discard').disabled=!active||systemRunning;
  $('content-job').textContent=(s.name?s.name+'\n':'')+(installing&&install.total?libraryWords.validating+' · '+install.done+' / '+install.total+' MiB':
   libraryWords[s.phase]||words[s.phase]||libraryWords.idle);
@@ -674,7 +682,8 @@ async function sendSystem(kind){
     if(f.name!==file.name.toLowerCase()||f.fingerprint!==signature||f.length!==file.size)throw Error('same');
     url='/api/v1/system/files/'+f.id;
    }else{
-    const created=await api(job+'/files',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:file.name.toLowerCase(),length:file.size,fingerprint:signature})});
+)HTML",
+R"HTML(    const created=await api(job+'/files',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:file.name.toLowerCase(),length:file.size,fingerprint:signature})});
     url=created.headers.get('Location');
    }
    let offset=Number((await api(url,{method:'HEAD'})).headers.get('Upload-Offset')),attempts=0;
@@ -820,5 +829,14 @@ $('update-go').addEventListener('click',()=>{
 $('update-skip').addEventListener('click',()=>{updateDismissed=true;renderUpdate();scrollTo(0,0);});
 $('update-banner-open').addEventListener('click',()=>{updateDismissed=false;renderUpdate();scrollTo(0,0);});
 $('update-reconnect').addEventListener('click',()=>location.reload());
-</script></body></html>)HTML";
+</script></body></html>)HTML",
+};
+inline const std::string& Page(){
+    static const std::string page=[]{
+        std::string s;
+        for(const auto part:PageParts) s+=part;
+        return s;
+    }();
+    return page;
+}
 }
