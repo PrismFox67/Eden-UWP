@@ -46,7 +46,7 @@ jobs:
   # Every push to main refreshes the "ci-latest" pre-release for testers (like Cemu-UWP's ci-latest).
   publish:
     name: ci-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.package))
     needs: build
     runs-on: ubuntu-24.04
     permissions:
