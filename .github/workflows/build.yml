@@ -33,6 +33,24 @@ permissions:
   contents: read
 
 jobs:
+  boot_nro:
+    name: boot.nro test homebrew
+    runs-on: ubuntu-24.04
+    # devkitPro's official toolchain image; the payload is our own source (tools/xbox/boot_nro).
+    container: devkitpro/devkita64:latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: tools/xbox/boot_nro
+      - run: make -C tools/xbox/boot_nro
+      - uses: actions/upload-artifact@v7
+        with:
+          name: boot-nro
+          path: tools/xbox/boot_nro/boot.nro
+          if-no-files-found: error
+          retention-days: 14
+
   mesa:
     name: spirv_to_dxil
     runs-on: windows-2025
