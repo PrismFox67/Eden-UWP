@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   SPDX-FileCopyrightText: Copyright 2026 Jadyx Project
+  SPDX-FileCopyrightText: Copyright 2026 Eden-UWP contributors
   SPDX-License-Identifier: GPL-3.0-or-later
 
   Package manifest for the Phase-2 / GATE-2 headless boot appx (src/jadyx).
@@ -15,14 +16,14 @@
     xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
     IgnorableNamespaces="uap rescap">
 
-  <Identity Name="Jadyx"
-            Publisher="CN=JadyxDev"
+  <Identity Name="EdenUWP.Unofficial"
+            Publisher="CN=EdenUWP"
             Version="0.3.8.0"
             ProcessorArchitecture="x64" />
 
   <Properties>
-    <DisplayName>Jadyx</DisplayName>
-    <PublisherDisplayName>Jadyx</PublisherDisplayName>
+    <DisplayName>Eden UWP (unofficial)</DisplayName>
+    <PublisherDisplayName>Eden-UWP</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 
@@ -52,8 +53,8 @@
          uwp_boot.cpp) is the conventional "<exe>.App" moniker; there is no activatable class. -->
     <Application Id="App" Executable="jadyx.exe" EntryPoint="Jadyx.App">
       <uap:VisualElements
-          DisplayName="Jadyx"
-          Description="Jadyx: a Nintendo Switch emulator for Xbox Series X|S Dev Mode, based on Eden."
+          DisplayName="Eden UWP (unofficial)"
+          Description="Eden UWP: a Nintendo Switch emulator for Xbox Series X|S Dev Mode, based on Eden and Jadyx."
           BackgroundColor="#1C1C1C"
           Square150x150Logo="Assets\Square150x150Logo.png"
           Square44x44Logo="Assets\Square44x44Logo.png">

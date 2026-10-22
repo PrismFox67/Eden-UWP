@@ -236,12 +236,14 @@ Runtime ProductionRuntime() {
             winrt::Windows::Storage::ApplicationData::Current().LocalFolder().Path().c_str()} /
         "updates";
     runtime.public_key = ReleasePublicKey;
+    runtime.automatic_check = !ReleasePublicKey.empty();
     runtime.fetch = Http::Fetch;
     runtime.download = Http::DownloadVerified;
     if (!server.empty()) {
         const auto local = [server](const std::string& url) {
-            for (const std::string_view prefix : {"https://api.github.com/repos/JulianDr14/jadyx/",
-                                                  "https://github.com/JulianDr14/jadyx/"})
+            for (const std::string prefix :
+                 {"https://api.github.com/repos/" + std::string{ReleaseRepository} + "/",
+                  "https://github.com/" + std::string{ReleaseRepository} + "/"})
                 if (url.starts_with(prefix))
                     return server + "/" + url.substr(prefix.size());
             return url;
@@ -292,6 +294,8 @@ Snapshot Updater::Status() const {
 void Updater::Check(bool force) {
     std::lock_guard operation_lock{impl->operation};
     auto& p = *impl;
+    if (p.runtime.public_key.empty())
+        return;
     {
         std::lock_guard lock{p.mutex};
         if (Active(p.state.phase) || p.state.phase == Phase::Requested ||
@@ -320,7 +324,8 @@ void Updater::Check(bool force) {
                 const auto cache = p.folder / ("releases-" + std::to_string(page) + ".json");
                 const auto etag_file = std::filesystem::path{cache.wstring() + L".etag"};
                 auto fetched = p.runtime.fetch(
-                    "https://api.github.com/repos/JulianDr14/jadyx/releases?per_page=100&page=" +
+                    "https://api.github.com/repos/" + std::string{ReleaseRepository} +
+                        "/releases?per_page=100&page=" +
                         std::to_string(page),
                     ReadBounded(etag_file, 8192).value_or(""), stop, 1u << 20);
                 std::string list;
@@ -351,7 +356,8 @@ void Updater::Check(bool force) {
                         (best && *version <= best->version))
                         continue;
                     const auto base =
-                        "https://github.com/JulianDr14/jadyx/releases/download/" + tag + "/";
+                        "https://github.com/" + std::string{ReleaseRepository} +
+                        "/releases/download/" + tag + "/";
                     bool manifest = false, sig = false;
                     for (const auto& asset : release.at("assets")) {
                         manifest |= asset.value("name", "") == "update.json" &&
@@ -460,6 +466,8 @@ void Updater::SetChannel(Channel channel) {
 void Updater::Download(bool install_when_ready) {
     std::lock_guard operation_lock{impl->operation};
     auto& p = *impl;
+    if (p.runtime.public_key.empty())
+        return;
     {
         std::lock_guard lock{p.mutex};
         if (Active(p.state.phase) || p.state.phase == Phase::Requested || !p.state.release)

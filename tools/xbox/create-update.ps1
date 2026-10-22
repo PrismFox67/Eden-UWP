@@ -21,7 +21,7 @@ try {
     $reader=[IO.StreamReader]::new($entry.Open())
     try {[xml]$manifest=$reader.ReadToEnd()}finally{$reader.Dispose()}
     $id=$manifest.Package.Identity
-    if($id.Name -ne 'Jadyx' -or $id.Publisher -ne 'CN=JadyxDev' -or $id.ProcessorArchitecture -ne 'x64'){throw 'Wrong package identity'}
+    if($id.Name -ne 'EdenUWP.Unofficial' -or $id.Publisher -ne 'CN=EdenUWP' -or $id.ProcessorArchitecture -ne 'x64'){throw 'Wrong package identity'}
     $version=[string]$id.Version
     if($version -notmatch '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' -or
        @($version.Split('.')|Where-Object {[int]$_ -gt 65535}).Count){throw 'Invalid package version'}
@@ -49,9 +49,9 @@ try{
     $file=Get-Item -LiteralPath $Package
     $metadata=[ordered]@{
         schema=1;version=$version;tag="v$version";channel=$Channel
-        identity=@{name='Jadyx';publisher='CN=JadyxDev';architecture='x64'}
+        identity=@{name='EdenUWP.Unofficial';publisher='CN=EdenUWP';architecture='x64'}
         min_os='10.0.17763.0';vclibs_min='14.0.33519.0';diagnostic=$false
-        url="https://github.com/JulianDr14/jadyx/releases/download/v$version/Jadyx_${version}_x64.appx"
+        url="https://github.com/PrismFox67/Eden-UWP/releases/download/v$version/EdenUWP_${version}_x64.appx"
         size=$file.Length;sha256=(Get-FileHash -LiteralPath $Package -Algorithm SHA256).Hash.ToLowerInvariant()
         notes=$Notes;published=[DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
     }

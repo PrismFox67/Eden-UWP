@@ -83,5 +83,5 @@ try {
     foreach($item in $archive.Entries){
         if($item.FullName -notin @('AppxSignature.p7x','AppxBlockMap.xml','[Content_Types].xml','AppxMetadata/CodeIntegrity.cat') -and -not $covered.Contains($item.FullName)){throw "Unsigned payload entry: $($item.FullName)"}
     }
-    [pscustomobject]@{Package=(Resolve-Path -LiteralPath $Package).Path;Signer='JadyxDev pinned key';Files=$files;Blocks=$blocks;CMS='valid';SignedMetadata='valid';Payload='valid';SignedContainer='valid'}
+    [pscustomobject]@{Package=(Resolve-Path -LiteralPath $Package).Path;Signer='pinned key';Files=$files;Blocks=$blocks;CMS='valid';SignedMetadata='valid';Payload='valid';SignedContainer='valid'}
 }finally{$archive.Dispose()}

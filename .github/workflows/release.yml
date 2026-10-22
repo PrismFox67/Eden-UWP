@@ -39,7 +39,7 @@ jobs:
       tag: ${{ steps.check.outputs.tag }}
     steps:
       - name: Only from main
-        if: github.ref != 'refs/heads/main' || github.repository != 'JulianDr14/jadyx'
+        if: github.ref != 'refs/heads/main' || github.repository != 'PrismFox67/Eden-UWP'
         run: |
           echo "::error::Releases are made from main, not ${GITHUB_REF_NAME}"
           exit 1
@@ -105,7 +105,7 @@ jobs:
           try {
               [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:JADYX_PFX_BASE64))
               $channel = if ($env:PRERELEASE -eq 'true') { 'preview' } else { 'stable' }
-              & tools/xbox/create-update.ps1 -Package "out/Jadyx_$($env:PACKAGE_VERSION)_x64.appx" -OutputDirectory out -Channel $channel -Notes $env:HIGHLIGHTS -PfxPath $pfx
+              & tools/xbox/create-update.ps1 -Package "out/EdenUWP_$($env:PACKAGE_VERSION)_x64.appx" -OutputDirectory out -Channel $channel -Notes $env:HIGHLIGHTS -PfxPath $pfx
           } finally { if (Test-Path -LiteralPath $pfx) { Remove-Item -LiteralPath $pfx -Force } }
 
       - name: Include update metadata in checksums
@@ -134,11 +134,11 @@ jobs:
           You need an Xbox Series X|S in Dev Mode. No keys, firmware or games are included: use your
           own dumps.
 
-          1. Download \`Jadyx_${PACKAGE_VERSION}_x64.appx\`, \`Microsoft.VCLibs.x64.14.00.appx\` and
-             \`Jadyx.cer\` from the assets below.
+          1. Download \`EdenUWP_${PACKAGE_VERSION}_x64.appx\`, \`Microsoft.VCLibs.x64.14.00.appx\` and
+             \`EdenUWP.cer\` from the assets below.
           2. On a PC on the same network, open Device Portal at \`https://<xbox-ip>:11443\` (Dev Home
              shows the address) and accept the browser's certificate warning.
-          3. Choose **Add**, pick the Jadyx appx, add the VCLibs appx as a dependency and \`Jadyx.cer\`
+          3. Choose **Add**, pick the Jadyx appx, add the VCLibs appx as a dependency and \`EdenUWP.cer\`
              as the certificate, and install.
           4. In Dev Home, select Jadyx → **View details** and set **App type** to **Game**. In App mode
              it runs out of memory.
@@ -183,15 +183,15 @@ jobs:
           if [ "$PRERELEASE" = "true" ]; then flags=(--prerelease --latest=false); fi
           draft_flags=()
           if [ "$PRERELEASE" = "true" ]; then draft_flags=(--prerelease); fi
-          gh release create "$TAG" out/* --repo JulianDr14/jadyx --verify-tag --draft --title "$title" --notes-file "$RUNNER_TEMP/notes.md" \
+          gh release create "$TAG" out/* --repo PrismFox67/Eden-UWP --verify-tag --draft --title "$title" --notes-file "$RUNNER_TEMP/notes.md" \
               "${draft_flags[@]}"
-          test "$(gh api 'repos/JulianDr14/jadyx/git/ref/tags/'"$TAG" --jq .object.sha)" = "$GITHUB_SHA"
+          test "$(gh api 'repos/PrismFox67/Eden-UWP/git/ref/tags/'"$TAG" --jq .object.sha)" = "$GITHUB_SHA"
           mkdir -p "$RUNNER_TEMP/update-verify"
-          gh release download "$TAG" --repo JulianDr14/jadyx -p update.json -p update.sig -p "Jadyx_${PACKAGE_VERSION}_x64.appx" --dir "$RUNNER_TEMP/update-verify"
-          for file in update.json update.sig "Jadyx_${PACKAGE_VERSION}_x64.appx"; do
+          gh release download "$TAG" --repo PrismFox67/Eden-UWP -p update.json -p update.sig -p "EdenUWP_${PACKAGE_VERSION}_x64.appx" --dir "$RUNNER_TEMP/update-verify"
+          for file in update.json update.sig "EdenUWP_${PACKAGE_VERSION}_x64.appx"; do
               cmp "out/$file" "$RUNNER_TEMP/update-verify/$file"
           done
-          gh release edit "$TAG" --repo JulianDr14/jadyx --draft=false "${flags[@]}"
+          gh release edit "$TAG" --repo PrismFox67/Eden-UWP --draft=false "${flags[@]}"
           echo "TITLE=$title" >> "$GITHUB_ENV"
 
       # The release is already out, so a Discord failure only warns. Pings Release Ping only for

@@ -44,7 +44,7 @@ param(
     # Extra boot.cfg lines for diagnosis: "log_filter=*:Info HW.GPU:Debug", "renderer=null".
     [string[]] $BootCfg = @(),
     # Must match Identity/@Publisher in dist/uwp/AppxManifest.xml, character for character.
-    [string] $PublisherCN = "CN=JadyxDev",
+    [string] $PublisherCN = "CN=EdenUWP",
     # Mesa's SPIR-V -> DXIL translator for the D3D12 renderer, built by build-spirv-to-dxil.ps1.
     # Without it the renderer still presents, through its CPU fallback.
     [string] $SpirvToDxil = "..\mesa-build\build-uwp\src\microsoft\spirv_to_dxil\spirv_to_dxil.dll",
@@ -65,7 +65,10 @@ param(
     [string] $Version,
     # Signing certificate as a PFX file (CI), its password in $env:JADYX_PFX_PASSWORD. Without it
     # the CurrentUser\My certificate for $PublisherCN is used, or minted.
-    [string] $PfxPath
+    [string] $PfxPath,
+    # Without a PFX or an installed certificate, create a self-signed one for $PublisherCN in
+    # CurrentUser\My (CI builds without the signing secrets, first local build).
+    [switch] $MintTestCertificate
 )
 
 $ErrorActionPreference = "Stop"
@@ -285,8 +288,13 @@ if ($PfxPath) {
     $cert = Get-ChildItem Cert:\CurrentUser\My |
             Where-Object { $_.Subject -eq $PublisherCN -and $_.NotAfter -gt (Get-Date) } |
             Select-Object -First 1
+    if (-not $cert -and $MintTestCertificate) {
+        $cert = New-SelfSignedCertificate -Type CodeSigningCert -Subject $PublisherCN `
+            -CertStoreLocation Cert:\CurrentUser\My -KeyUsage DigitalSignature `
+            -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3", "2.5.29.19={text}")
+    }
     if (-not $cert) {
-        throw 'The Jadyx signing certificate is missing. Restore the distribution certificate; do not mint a replacement for an update.'
+        throw 'The signing certificate is missing. Restore the distribution certificate, or pass -MintTestCertificate for a test build.'
     }
 
     & $signtool sign /fd SHA256 /sha1 $cert.Thumbprint /t http://timestamp.digicert.com $appx

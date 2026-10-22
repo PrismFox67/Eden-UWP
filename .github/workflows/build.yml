@@ -249,28 +249,32 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           # Every package carries the project's certificate, so the console updates in place.
-          if (-not $env:JADYX_PFX_BASE64 -or -not $env:JADYX_PFX_PASSWORD) {
-              throw "The JADYX_PFX_BASE64 / JADYX_PFX_PASSWORD secrets are not set"
-          }
-          $pfx = Join-Path $env:RUNNER_TEMP "jadyx.pfx"
-          # A secret piped in from PowerShell can carry a BOM or line breaks; keep only base64.
-          $base64 = $env:JADYX_PFX_BASE64 -replace '[^A-Za-z0-9+/=]', ''
-          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($base64))
+          # Without the secrets the package is signed with a test certificate minted for this run.
+          $pfx = $null
           $params = @{
               Release     = $true
-              PfxPath     = $pfx
               SpirvToDxil = Join-Path $env:RUNNER_TEMP "mesa\spirv_to_dxil.dll"
           }
+          if ($env:JADYX_PFX_BASE64 -and $env:JADYX_PFX_PASSWORD) {
+              $pfx = Join-Path $env:RUNNER_TEMP "jadyx.pfx"
+              # A secret piped in from PowerShell can carry a BOM or line breaks; keep only base64.
+              $base64 = $env:JADYX_PFX_BASE64 -replace '[^A-Za-z0-9+/=]', ''
+              [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($base64))
+              $params.PfxPath = $pfx
+          } else {
+              Write-Host "::warning::No signing secrets, signing with a per-run test certificate"
+              $params.MintTestCertificate = $true
+          }
           if ($env:PACKAGE_VERSION) { $params.Version = $env:PACKAGE_VERSION }
-          try { & tools\xbox\package-appx.ps1 @params } finally { Remove-Item $pfx -Force }
+          try { & tools\xbox\package-appx.ps1 @params } finally { if ($pfx) { Remove-Item $pfx -Force } }
 
           [xml]$mf = Get-Content build-uwp\package\layout\AppxManifest.xml -Raw
           $version = $mf.Package.Identity.Version
           $out = New-Item -ItemType Directory -Force out
-          Copy-Item build-uwp\package\jadyx.appx "out\Jadyx_${version}_x64.appx"
-          Copy-Item build-uwp\package\jadyx.cer out\Jadyx.cer
+          Copy-Item build-uwp\package\jadyx.appx "out\EdenUWP_${version}_x64.appx"
+          Copy-Item build-uwp\package\jadyx.cer out\EdenUWP.cer
           Copy-Item build-uwp\package\Microsoft.VCLibs.x64.14.00.appx out\
-          Compress-Archive build-uwp\bin\jadyx.pdb "out\Jadyx_${version}_symbols.zip"
+          Compress-Archive build-uwp\bin\jadyx.pdb "out\EdenUWP_${version}_symbols.zip"
           [ordered]@{
               version = $version
               commit  = $env:GITHUB_SHA
