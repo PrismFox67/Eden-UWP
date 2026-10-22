@@ -89,6 +89,7 @@
 #include "video_core/renderer_d3d12/d3d12_pipeline_key_mode.h"
 
 #include "jadyx/app/alloc_watch.h"
+#include "jadyx/app/session_marker.h"
 #include "jadyx/cheats/cheat_session.h"
 #include "jadyx/cheats/cheats_page.h"
 #include "jadyx/cheats/cheats_view.h"
@@ -1492,6 +1493,34 @@ unsigned long long ElapsedMs() {
     return GetTickCount64() - start;
 }
 
+Jadyx::SessionMarker::Paths SessionPaths() {
+    const std::filesystem::path dir =
+        std::filesystem::path{std::wstring{Windows::Storage::ApplicationData::Current().LocalFolder().Path()}} /
+        L"jadyx" / L"log";
+    return {dir / L"session.marker", dir / L"jadyx_diag.txt"};
+}
+
+// The notice for the library when the last game session did not end cleanly, empty otherwise.
+std::string LastSessionNotice() {
+    using Jadyx::I18n::Text;
+    try {
+        const auto last = Jadyx::SessionMarker::CheckLastSession(SessionPaths());
+        if (!last) return {};
+        WriteDiag("last session ended unexpectedly: " + last->game + (last->crashed ? ", crashed" : "") +
+                  ", memory " + std::to_string(last->memory_percent) + "%");
+        const std::wstring game = Jadyx::Utf8ToUtf16(std::filesystem::path{last->game}.filename().string());
+        std::wstring text;
+        if (last->crashed) text = Jadyx::I18n::Format(Text::LastSessionCrashed, {game});
+        else if (last->memory_percent >= 85)
+            text = Jadyx::I18n::Format(Text::LastSessionLowMemory,
+                                       {game, std::to_wstring(last->memory_percent)});
+        else text = Jadyx::I18n::Format(Text::LastSessionClosed, {game});
+        return Jadyx::I18n::ToUtf8(text);
+    } catch (...) {
+        return {};
+    }
+}
+
 // LocalState\jadyx\log, next to jadyx_log.txt. Created here: the diag starts before Eden's
 // logging creates the folder. These logs append across launches, so one past 8 MiB moves to its
 // .old copy first instead of growing without end.
@@ -2326,7 +2355,11 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
     IFrameworkView CreateView() {
         return *this;
     }
-    void Initialize(CoreApplicationView const&) {}
+    void Initialize(CoreApplicationView const&) {
+        // The console may end a suspended app without notice: not a crash (session_marker.h).
+        CoreApplication::Suspending([](auto&&, auto&&) { Jadyx::SessionMarker::MarkSuspended(SessionPaths(), true); });
+        CoreApplication::Resuming([](auto&&, auto&&) { Jadyx::SessionMarker::MarkSuspended(SessionPaths(), false); });
+    }
     void SetWindow(CoreWindow const& window) {
         m_window = window;
     }
@@ -2447,7 +2480,7 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
 
         // "Back to the library" in the in-game menu shuts the game down inside this process and
         // comes back here: restarting the app is slow and awkward on the console.
-        std::string library_error;
+        std::string library_error = LastSessionNotice();
         for (u32 session = 1;; ++session) {
             std::optional<std::string> library_game;
             bool show_library = false;
@@ -2908,6 +2941,7 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
                 // Capture any early throw to the diag file instead of a silent exit.
                 try {
                     WriteDiag("calling RunHeadlessBoot");
+                    Jadyx::SessionMarker::MarkStarted(SessionPaths(), nro_path);
                     int rc = Jadyx::RunHeadlessBoot(nro_path, surface, config);
                     if (rc == Jadyx::PULSE_RESUME_FAILED) {
                         Jadyx::PulseSessions::SetNotice(Jadyx::I18n::ToUtf8(
@@ -2925,6 +2959,7 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
                 } catch (...) {
                     WriteDiag("unknown exception in RunHeadlessBoot");
                 }
+                Jadyx::SessionMarker::MarkStopped(SessionPaths());
                 done.store(true);
             });
 
