@@ -21,6 +21,8 @@ DEVKITPRO ?= C:/devkitPro
 export DEVKITPRO
 LIBNX     := $(DEVKITPRO)/libnx
 CC        := $(DEVKITPRO)/devkitA64/bin/aarch64-none-elf-gcc
+# Mesa (the GL driver linked in) is C++, so the final link needs g++ for libstdc++.
+CXX       := $(DEVKITPRO)/devkitA64/bin/aarch64-none-elf-g++
 ELF2NRO   := $(DEVKITPRO)/tools/bin/elf2nro
 
 # Matches the devkitPro switch template: Cortex-A57 (the Switch's CPU), soft thread pointer, PIE.
@@ -35,13 +37,16 @@ TARGET := draw_stress
 
 all: $(TARGET).nro
 
-$(TARGET).elf: main.c
-	$(CC) $(CFLAGS) $(LDFLAGS) $< $(LIBS) -o $@
+main.o: main.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(TARGET).elf: main.o
+	$(CXX) $(LDFLAGS) $< $(LIBS) -o $@
 
 $(TARGET).nro: $(TARGET).elf
 	$(ELF2NRO) $< $@
 
 clean:
-	rm -f $(TARGET).elf $(TARGET).nro
+	rm -f main.o $(TARGET).elf $(TARGET).nro
 
 .PHONY: all clean
