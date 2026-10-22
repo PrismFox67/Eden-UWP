@@ -668,6 +668,10 @@ This fork stands on other people's work:
   the [eden-emulator/mirror](https://github.com/eden-emulator/mirror) GitHub mirror.
 - [juanresendiz813/eden-xbox](https://github.com/juanresendiz813/eden-xbox): the UWP groundwork
   this fork started from.
+- NXbox by NSPX (https://github.com/NspxMiguel/NXbox): the LAN shared shader cache
+  (`src/jadyx/storage/shader_share.*`, `src/video_core/pipeline_cache_merge.*`,
+  `tools/shader-share/`) is adapted from NXbox's, under GPL-3.0 with its section 7(b) attribution
+  term; those files keep the NSPX copyright line.
 - [Mesa](https://gitlab.freedesktop.org/mesa/mesa): `spirv_to_dxil` and the NIR passes behind
   the shader translation.
 - [@dramon8945](https://www.instagram.com/dramon8945/): the Jadyx logo, tiles and splash screen

@@ -18,7 +18,9 @@
 namespace Jadyx {
 
 struct SystemPage {
-    enum Row : std::size_t { UserName, InterfaceLanguage, GameLanguage, Region, AdultMods, PerformanceStats, PulseSessions, PlayTime, ClearCache, Updates, RowCount };
+    enum Row : std::size_t { UserName, InterfaceLanguage, GameLanguage, Region, AdultMods, PerformanceStats, PulseSessions, PlayTime, ShaderShare, ClearCache, Updates, RowCount };
+    /// What the text editor is changing.
+    enum class Editing : std::uint8_t { Name, ShaderShareUrl };
 
     bool updates_open{};
     std::size_t update_row{}, update_detail{}, update_scroll{};
@@ -30,6 +32,7 @@ struct SystemPage {
     SystemLocale locale;     ///< As Windows reports it, for the "Automatic (...)" values.
     std::wstring notice;
     std::optional<TextEntry> name_editor;
+    Editing editing{Editing::Name};
     std::wstring editor_notice;
 };
 
@@ -80,6 +83,14 @@ inline SystemPageEffect HandleSystemInput(SystemPage& page, SystemInput input) {
     case Row::UserName:
         if (input != SystemInput::Confirm) return SystemPageEffect::None;
         page.name_editor.emplace(settings.user_name, MaxUserNameLength);
+        page.editing = SystemPage::Editing::Name;
+        page.editor_notice.clear();
+        return SystemPageEffect::EditName;
+    case Row::ShaderShare:
+        if (input != SystemInput::Confirm) return SystemPageEffect::None;
+        page.name_editor.emplace(settings.shader_share_url, MaxShaderShareUrlLength);
+        if (page.name_editor->Shifted()) page.name_editor->ToggleShift(); // URLs are lower case
+        page.editing = SystemPage::Editing::ShaderShareUrl;
         page.editor_notice.clear();
         return SystemPageEffect::EditName;
     case Row::InterfaceLanguage:
@@ -120,6 +131,17 @@ inline SystemPageEffect FinishNameEditor(SystemPage& page, bool accept) {
         page.name_editor.reset();
         return SystemPageEffect::None;
     }
+    if (page.editing == SystemPage::Editing::ShaderShareUrl) {
+        // Empty turns sharing off; anything else must be an http(s) address.
+        std::wstring url{page.name_editor->Value()};
+        if (!url.empty() && !url.starts_with(L"http://") && !url.starts_with(L"https://")) {
+            page.editor_notice = I18n::Tr(I18n::Text::ShaderShareBadUrl);
+            return SystemPageEffect::None;
+        }
+        page.name_editor.reset();
+        page.settings.shader_share_url = std::move(url);
+        return SystemPageEffect::NameDone;
+    }
     auto name = SanitizeUserName(page.name_editor->Value());
     if (name.empty()) {
         page.editor_notice = I18n::Tr(I18n::Text::NameEmpty);
@@ -143,6 +165,7 @@ inline I18n::Text SystemRowTitle(SystemPage::Row row) {
     case SystemPage::AdultMods:         return Text::ModsAdult;
     case SystemPage::PulseSessions:     return Text::PulseSessions;
     case SystemPage::PlayTime:          return Text::PlayTimeTracking;
+    case SystemPage::ShaderShare:       return Text::ShaderShare;
     default:                            return Text::ClearLibraryCache;
     }
 }
@@ -159,6 +182,7 @@ inline I18n::Text SystemRowHint(SystemPage::Row row) {
     case SystemPage::AdultMods:         return Text::ModsAdultHint;
     case SystemPage::PulseSessions:     return Text::PulseSessionsHint;
     case SystemPage::PlayTime:          return Text::PlayTimeTrackingHint;
+    case SystemPage::ShaderShare:       return Text::ShaderShareHint;
     default:                            return Text::ClearLibraryCacheHint;
     }
 }
@@ -191,6 +215,9 @@ inline std::wstring SystemRowValue(const SystemPage& page, SystemPage::Row row) 
         return std::wstring{I18n::Tr(settings.pulse_sessions ? Text::Yes : Text::No)};
     case SystemPage::PlayTime:
         return std::wstring{I18n::Tr(settings.track_play_time ? Text::Yes : Text::No)};
+    case SystemPage::ShaderShare:
+        return settings.shader_share_url.empty() ? std::wstring{I18n::Tr(Text::ShaderShareOff)}
+                                                 : settings.shader_share_url;
     default:
         return {};
     }

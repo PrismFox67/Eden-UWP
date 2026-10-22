@@ -1122,6 +1122,7 @@ private:
                                  std::wstring{Tr(SystemRowHint(row))}, SystemRowValue(view.system, row)};
                 switch (row) {
                 case SystemPage::UserName: item.kind = Kind::Open; break;
+                case SystemPage::ShaderShare: item.kind = Kind::Open; break;
                 case SystemPage::Updates: item.kind = Kind::Open; break;
                 case SystemPage::ClearCache: item.kind = Kind::Open; break;
                 case SystemPage::AdultMods: item.kind = Kind::Toggle; item.on = settings.show_adult_mods; break;
@@ -1508,7 +1509,9 @@ private:
         brush->SetColor(D2D1::ColorF(0, 0, 0, 0.86f));
         target->FillRectangle(D2D1::RectF(0, 0, 1280, 720), brush.Get());
         Round(L::EditorX, L::EditorY, K::Width, K::Height, 22, Palette::Surface);
-        DrawTextEntryPanel(*this, {*page.name_editor, Tr(T::UserName), Tr(T::NameEditorHint), page.editor_notice},
+        const bool url = page.editing == SystemPage::Editing::ShaderShareUrl;
+        DrawTextEntryPanel(*this, {*page.name_editor, Tr(url ? T::ShaderShare : T::UserName),
+                                   Tr(url ? T::ShaderShareEditorHint : T::NameEditorHint), page.editor_notice},
                            L::EditorX, L::EditorY);
         const float left = L::EditorX + K::Left;
         const float footer = L::EditorY + K::Footer;

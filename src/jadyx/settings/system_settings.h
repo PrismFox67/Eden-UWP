@@ -23,6 +23,7 @@ namespace Jadyx {
 
 /// The Switch shows user names of up to 10 characters; games lay them out for that.
 inline constexpr std::size_t MaxUserNameLength = 10;
+inline constexpr std::size_t MaxShaderShareUrlLength = 120;
 inline constexpr std::wstring_view DefaultUserName = L"Jadyx";
 
 struct SystemSettings {
@@ -35,6 +36,7 @@ struct SystemSettings {
     bool pulse_sessions{true}; ///< Back to home keeps the game where it is (pulse_sessions.h).
     bool track_play_time{true}; ///< Counts play time per game and orders the library by it (play_history.h).
     Upscaling upscaling{Upscaling::Bilinear};         ///< Set from the in-game menu.
+    std::wstring shader_share_url; ///< Shared shader cache server (storage/shader_share.h); empty = off.
 
     bool operator==(const SystemSettings&) const = default;
 };

@@ -21,6 +21,7 @@ constexpr auto AdultModsKey = L"system_show_adult_mods";
 constexpr auto PulseSessionsKey = L"system_pulse_sessions";
 constexpr auto PlayTimeKey = L"system_track_play_time";
 constexpr auto UpscalingKey = L"system_upscaling";
+constexpr auto ShaderShareKey = L"system_shader_share_url";
 
 /// Saved as the enum's value, or -1 for "follow the system". A value that is not a selectable
 /// option (an older or newer build's) also falls back to the system.
@@ -59,6 +60,8 @@ SystemSettings LoadSystemSettings() {
         if (values.HasKey(UpscalingKey))
             settings.upscaling = UpscalingFromValue(winrt::unbox_value<int32_t>(values.Lookup(UpscalingKey)))
                                      .value_or(Upscaling::Bilinear);
+        if (values.HasKey(ShaderShareKey))
+            settings.shader_share_url = winrt::unbox_value<winrt::hstring>(values.Lookup(ShaderShareKey)).c_str();
     } catch (...) { /* Missing or invalid values keep following the system. */ }
     return settings;
 }
@@ -75,6 +78,7 @@ bool SaveSystemSettings(const SystemSettings& settings) {
         values.Insert(PulseSessionsKey, winrt::box_value(settings.pulse_sessions));
         values.Insert(PlayTimeKey, winrt::box_value(settings.track_play_time));
         values.Insert(UpscalingKey, winrt::box_value(static_cast<int32_t>(settings.upscaling)));
+        values.Insert(ShaderShareKey, winrt::box_value(winrt::hstring{settings.shader_share_url}));
         return true;
     } catch (...) { return false; }
 }

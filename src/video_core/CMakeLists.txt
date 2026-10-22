@@ -551,6 +551,9 @@ if (ENABLE_D3D12)
         renderer_d3d12/d3d12_driver_guard.cpp
         renderer_d3d12/d3d12_driver_guard.h
         renderer_d3d12/d3d12_pipeline_quarantine.cpp
+        pipeline_cache_merge.cpp
+        renderer_d3d12/d3d12_disk_cache_merge.h
+        pipeline_cache_merge.h
         renderer_d3d12/d3d12_pipeline_quarantine.h
         renderer_d3d12/d3d12_scheduler.cpp
         renderer_d3d12/d3d12_scheduler.h

@@ -42,6 +42,8 @@
 #include "video_core/renderer_d3d12/d3d12_shader_compiler.h"
 #include "video_core/renderer_d3d12/d3d12_texture_cache.h"
 #include "video_core/renderer_vulkan/vk_state_tracker.h"
+#include "video_core/pipeline_cache_merge.h"
+#include "video_core/renderer_d3d12/d3d12_disk_cache_merge.h"
 #include "video_core/shader_environment.h"
 #include "video_core/shader_notify.h"
 
@@ -348,6 +350,12 @@ ShaderCaps QueryShaderCaps(const Device& device) {
 }
 
 } // Anonymous namespace
+
+long MergeDiskCacheFile(const std::filesystem::path& local, const std::filesystem::path& incoming) {
+    return VideoCommon::MergePipelineCacheFiles(local, incoming, CACHE_VERSION,
+                                                sizeof(GraphicsPipelineCacheKey),
+                                                sizeof(ComputePipelineCacheKey));
+}
 
 void SetDumpedShader(u64 unique_hash) {
     AddShaderHash(dumped_shaders, unique_hash);

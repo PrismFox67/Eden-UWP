@@ -90,6 +90,7 @@
 
 #include "jadyx/app/alloc_watch.h"
 #include "jadyx/app/session_marker.h"
+#include "jadyx/storage/shader_share.h"
 #include "jadyx/cheats/cheat_session.h"
 #include "jadyx/cheats/cheats_page.h"
 #include "jadyx/cheats/cheats_view.h"
@@ -595,6 +596,8 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
     // thread, so it goes before anything is torn down.
     std::optional<PulseScreen> pulse_screen;
     std::optional<std::jthread> trim_worker;
+    std::string shader_share_url; ///< Settings > System > Shared shader cache; empty = off.
+    u64 shader_share_title{};     ///< Set once the title's shared cache was asked for.
     const auto shutdown = [&] {
         trim_worker.reset();
         pulse_screen.reset();
@@ -616,6 +619,11 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
             void(system.Pause());
             if (config.gpu_failure_probe) WriteDiag("GPU recovery shutdown: ShutdownMainProcess");
             system.ShutdownMainProcess();
+        }
+        if (shader_share_title != 0) {
+            // The renderer is gone, so its cache file is complete.
+            WriteDiag("step: uploading the shared shader cache");
+            ShaderShare::Upload(shader_share_url, shader_share_title);
         }
         if (config.gpu_failure_probe) WriteDiag("GPU recovery shutdown: HID unload");
         system.HIDCore().UnloadInputDevices();
@@ -779,6 +787,12 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
         // As yuzu_cmd: build the pipelines earlier sessions saved (LocalState/jadyx/shader/<title>/
         // d3d12.bin) before the guest runs, so they do not stutter in; the ones the game meets
         // later are appended to the file. The renderer shows the progress on screen.
+        shader_share_url = Utf16ToUtf8(LoadSystemSettings().shader_share_url);
+        if (!shader_share_url.empty()) {
+            shader_share_title = system.GetApplicationProcessProgramID();
+            WriteDiag("step: downloading the shared shader cache from " + shader_share_url);
+            ShaderShare::Download(shader_share_url, shader_share_title);
+        }
         WriteDiag("step: building the disk shader cache | " + MemoryReport());
         VideoCore::RendererBase& renderer = system.Renderer();
         if (pulse_screen) pulse_screen->ShadersStarting();

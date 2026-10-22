@@ -38,6 +38,8 @@ add_executable(jadyx WIN32
     library/library_layout.h
     library/uwp_library_metadata.cpp
     library/uwp_library_metadata.h
+    storage/shader_share.cpp
+    storage/shader_share.h
     storage/uwp_rom_storage.cpp
     storage/uwp_rom_storage.h
     storage/uwp_file_manager.cpp

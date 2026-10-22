@@ -1388,6 +1388,7 @@ std::optional<std::string> ShowGameLibrary(void* core_window, unsigned width, un
                 send(Up, SystemInput::Up);
                 send(Down, SystemInput::Down);
                 const bool opens = system_page.selected == SystemPage::UserName ||
+                                   system_page.selected == SystemPage::ShaderShare ||
                                    system_page.selected == SystemPage::ClearCache || system_page.selected == SystemPage::Updates;
                 send(Left, opens ? SystemInput::Back : SystemInput::Left);
                 send(Right, SystemInput::Right);
