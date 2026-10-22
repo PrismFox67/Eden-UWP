@@ -55,6 +55,24 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  draw_stress:
+    name: draw_stress.nro profiling workload
+    runs-on: ubuntu-24.04
+    # devkitPro's official toolchain image; the payload is our own source (tools/xbox/draw_stress).
+    container: devkitpro/devkita64:latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: tools/xbox/draw_stress
+      - run: make -C tools/xbox/draw_stress
+      - uses: actions/upload-artifact@v7
+        with:
+          name: draw-stress-nro
+          path: tools/xbox/draw_stress/draw_stress.nro
+          if-no-files-found: error
+          retention-days: 14
+
   mesa:
     name: spirv_to_dxil
     runs-on: windows-2025

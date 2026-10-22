@@ -27,3 +27,7 @@ Decisions, open questions, and what has been verified on hardware (with build an
 
 ## Verified on hardware
 - (nothing yet for this project; Cemu facts are in CEMU_LESSONS.md)
+- 2026-10-22: Profiling workload `tools/xbox/draw_stress` (our own GPL source, OpenGL via devkitPro's
+  switch-mesa/glad): 4000 uniform+draw calls per frame for 60 s, logs `DRAW_STRESS fps=.. draws=..`
+  each second and `DRAW_STRESS_DONE`. CI builds it with devkitpro/devkita64 (artifact draw-stress-nro).
+  Not yet compiled locally (no devkitPro on this PC) - first CI run is its first build.
