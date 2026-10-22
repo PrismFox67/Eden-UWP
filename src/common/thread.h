@@ -29,6 +29,10 @@ namespace Common {
 /// timed wait.
 void SetPreciseTimerSleeps(bool enabled);
 [[nodiscard]] bool IsPreciseTimerSleeps();
+/// Coarse timed waits (boot.cfg "timer_wait=coarse"): the high-resolution timer sleeps until
+/// COARSE_SPIN before the deadline instead of its learned lateness, so a waiter spins at most that
+/// long and may wake up to the timer's lateness after the deadline. Off by default.
+void SetCoarseTimerWaits(bool enabled);
 #endif
 
 class Event {

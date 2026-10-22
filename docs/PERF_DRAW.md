@@ -55,3 +55,22 @@ timers) not used, so phase shares are from sampling only.
 - Same run on the Xbox via QA (needs=xbox) for the console baseline.
 - Real games tonight (owner's dumps): same report, compare GPU-thread us/draw.
 - Try the HostTiming wait change behind a boot.cfg switch and A/B.
+
+## A/B: timer_wait=coarse (#220), 2026-10-22, PC, draw_stress, one 60 s run each
+
+Both runs with `timer_profile=1` (and the packaged `profile=1`).
+
+| | precise (default) | coarse |
+| --- | --- | --- |
+| draw_stress fps median (min-max) | 50 (11-58) | 35 (10-55) |
+| HostTiming CPU | 5.1% of a core | 1.7% |
+| HostTiming spin / requested wait | 19.1 s / 56.0 s | 0.11 s / 40.1 s |
+| elapsed - requested (lateness) | +0.26 s | **+15.1 s** |
+| GPU thread CPU | 11.9% | 7.0% |
+
+Coarse waits do stop the spinning, but on this laptop the high-resolution timer wakes up to
+~4 ms late, and the events it delays slow the guest down: -30% fps. **Keep the default (precise).**
+The 43% HostTiming in the first profile above did not reproduce (5.1% here, same build and
+workload); that first run's spin was likely inflated by the concurrent build load on the laptop.
+`timer_wait=coarse` stays as a boot.cfg switch for the console A/B (#221 step 6), where timer
+lateness and core count differ.

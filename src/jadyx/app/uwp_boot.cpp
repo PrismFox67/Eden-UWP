@@ -335,6 +335,8 @@ struct BootConfig {
     /// Host timing waits sleep on a high-resolution timer and wait only its lateness on the CPU
     /// ("timer_sleep=0" waits the last timer tick on the CPU, as before).
     bool timer_sleep{true};
+    /// "timer_wait=coarse": HostTiming spins at most 50 us before an event (PERF_DRAW.md finding 2).
+    bool timer_coarse{};
     bool timer_profile{}; ///< HostTiming waits only; opt-in, separate from draw profiling.
     /// File name of a game in LocalState\games to boot instead of boot.nro (package-appx.ps1 -Game).
     std::string game;
@@ -452,6 +454,7 @@ int RunHeadlessBoot(const std::string& nro_path, const BootSurface& surface,
     Kernel::PhysicalCore::SetIdleSpinPolicy(config.idle_spin);
     // Read by the host timing thread's first wait.
     Common::SetPreciseTimerSleeps(config.timer_sleep);
+    Common::SetCoarseTimerWaits(config.timer_coarse);
     Common::Windows::TimedWaitProfile::enabled.store(config.timer_profile, std::memory_order_relaxed);
     // Read by HostMemory when Core::System builds the DRAM, so it has to be set before that.
     // The 384-MiB Series experiment covered only 388 of 2637 MiB requested by Game C (15%). The
@@ -2602,6 +2605,9 @@ struct BootView : implements<BootView, IFrameworkViewSource, IFrameworkView> {
                             config.ps_scratch = line == "ps_scratch=uav"      ? 1
                                                 : line == "ps_scratch=native" ? 2
                                                                               : 0;
+                            WriteDiag("boot.cfg: " + line);
+                        } else if (line == "timer_wait=coarse" || line == "timer_wait=precise") {
+                            config.timer_coarse = line.ends_with("coarse");
                             WriteDiag("boot.cfg: " + line);
                         } else if (line == "timer_profile=1") {
                             config.timer_profile = true;

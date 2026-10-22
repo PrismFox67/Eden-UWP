@@ -645,6 +645,14 @@ std::chrono::nanoseconds PreciseWaitMargin() {
 
 } // Anonymous namespace
 
+std::atomic<bool> coarse_timer_waits{false};
+/// The most a coarse wait spins before its deadline.
+constexpr s64 COARSE_SPIN_NS = 50'000;
+
+void SetCoarseTimerWaits(bool enabled) {
+    coarse_timer_waits = enabled;
+}
+
 void SetPreciseTimerSleeps(bool enabled) {
     precise_timer_sleeps = enabled;
 }
@@ -681,7 +689,11 @@ bool Event::WaitFor(const std::chrono::nanoseconds time) {
         }
     }
     if (timer) {
-        profile.Margin(timer_slack->Margin());
+        const bool coarse = coarse_timer_waits.load(std::memory_order_relaxed);
+        const auto margin = [&] {
+            return coarse ? (std::min)(timer_slack->Margin(), COARSE_SPIN_NS) : timer_slack->Margin();
+        };
+        profile.Margin(margin());
         // Sleeps on the timer until its usual lateness before the deadline, re-sleeping after a
         // wake that did not come from Set, and waits only that last stretch on the CPU.
         const s64 deadline_ns = (clock.GetTimeNS() + time).count();
@@ -690,7 +702,7 @@ bool Event::WaitFor(const std::chrono::nanoseconds time) {
                 return true;
             }
             const s64 now = clock.GetTimeNS().count();
-            const s64 wake_at = deadline_ns - timer_slack->Margin();
+            const s64 wake_at = deadline_ns - margin();
             if (wake_at <= now) {
                 break;
             }
