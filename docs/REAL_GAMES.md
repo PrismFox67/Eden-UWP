@@ -8,13 +8,18 @@ with title data stay on the console and in the local `Logs/` folder).
 ## 1. Getting the files onto the console
 
 Install the current `ci-latest` package (appx + VCLibs + cer, Device Portal -> Add, Game mode).
-Then, with the app open on the library screen, either:
+Then:
 
-- **Jadyx Portal** (Settings > Network > portal; open the shown address from a PC or phone on the
-  same network): upload keys / firmware ZIP in the Keys and Firmware pages, games in Library.
-  See docs/xbox/xbox_network_portal.md.
-- **USB drive**: games in any folder on an exFAT/NTFS drive, added from the library's import tile
-  (USB direct mode keeps them on the drive; see docs/xbox/xbox_content.md).
+- **Keys and firmware**: from a USB drive, with the app's own importer (the library's system
+  import, `jadyx/content` + `system_import`). The portal's web upload for keys/firmware was only a
+  candidate branch on 2026-10-19 (docs/xbox/xbox_network_portal.md); check the build before
+  relying on it.
+- **Games**: the Jadyx Portal (game upload over the LAN after pairing, docs/xbox/xbox_network_portal.md),
+  or a USB drive through the library's import tile (USB direct mode keeps them on the drive,
+  docs/xbox/xbox_content.md).
+
+The exact menu names are in the app; this page was written without a console session, so QA notes
+the real path on the ticket the first time.
 
 Check: the game shows in the library with its cover and name; the log says nothing about missing
 keys (`jadyx_log.txt`, grep `key`).
